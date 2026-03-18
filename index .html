@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مشروع القمة الزراعي — نظام المراقبة الجغرافية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+<style>
+/* =====================================================
+   DESIGN SYSTEM — Al-Qimma GIS Dashboard v5.0
+   Theme: Institutional Navy — FAO / UN GIS standards
+   ===================================================== */
+:root {
+  --c-bg:       #07111f;
+  --c-nav:      #0b1a2e;
+  --c-panel:    #0d1f35;
+  --c-card:     #0f2340;
+  --c-border:   #1a3050;
+  --c-border2:  #234070;
+  --c-gold:     #c8a84b;
+  --c-gold2:    #e8c870;
+  --c-gold3:    #8a6e2a;
+  --c-sky:      #3d8fcc;
+  --c-sky2:     #5aaee8;
+  --c-cyan:     #28b5a8;
+  --c-low:      #c94a3c;
+  --c-med:      #cc8830;
+  --c-good:     #3aaa6a;
+  --c-exc:      #28b5a8;
+  --c-t1:       #dce8f5;
+  --c-t2:       #7a9abe;
+  --c-t3:       #3d6080;
+  --c-t4:       #1e3a58;
+  --font:       'IBM Plex Sans Arabic', sans-serif;
+  --mono:       'IBM Plex Mono', monospace;
+  --r:          4px;
+  --r2:         6px;
+  --r3:         8px;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; background: var(--c-bg); color: var(--c-t1); font-family: var(--font); }
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-thumb { background: var(--c-border2); border-radius: 2px; }
+
+/* ── Layout ── */
+body {
+  display: grid;
+  grid-template-rows: 50px 1fr;
+  grid-template-columns: 252px 1fr 272px;
+  height: 100vh;
+}
+
+/* ── Topbar ── */
+#topbar {
+  grid-column: 1 / -1;
+  background: var(--c-nav);
+  border-bottom: 1px solid var(--c-border);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 0;
+  position: relative;
+  z-index: 2000;
+  box-shadow: 0 2px 12px rgba(0,0,0,.4);
+}
+#topbar::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--c-gold3) 15%, var(--c-gold) 50%, var(--c-gold3) 85%, transparent 100%);
+}
+
+.brand { display: flex; align-items: center; gap: 10px; padding-left: 14px; border-left: 1px solid var(--c-border); flex-shrink: 0; }
+.brand-seal {
+  width: 34px; height: 34px; border: 1.5px solid var(--c-gold3); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 17px;
+  background: radial-gradient(circle at 40% 35%, rgba(200,168,75,.15), transparent 70%);
+}
+.brand-name { font-size: 12px; font-weight: 700; color: var(--c-t1); }
+.brand-sub  { font-size: 8px; color: var(--c-gold3); letter-spacing: 1.2px; text-transform: uppercase; margin-top: 1px; }
+
+.top-sep { width: 1px; height: 26px; background: var(--c-border); margin: 0 12px; flex-shrink: 0; }
+
+.sys-info .sys-title { font-size: 10px; font-weight: 600; color: var(--c-t2); letter-spacing: .4px; }
+.sys-info .sys-ver   { font-size: 8px; color: var(--c-t3); font-family: var(--mono); letter-spacing: 1px; margin-top: 1px; }
+
+/* Crop filter pills */
+.filters { display: flex; gap: 3px; margin-right: auto; margin-left: 14px; }
+.pill {
+  padding: 3px 11px; border-radius: 20px;
+  border: 1px solid var(--c-border2); background: transparent;
+  color: var(--c-t3); font-family: var(--font); font-size: 9px; font-weight: 600;
+  cursor: pointer; transition: all .15s; letter-spacing: .3px;
+}
+.pill:hover { border-color: var(--c-sky); color: var(--c-sky2); }
+.pill.active        { background: rgba(61,143,204,.15); border-color: var(--c-sky);  color: var(--c-sky2); }
+.pill.active.potato { background: rgba(200,168,75,.12); border-color: var(--c-gold3); color: var(--c-gold2); }
+.pill.active.onion  { background: rgba(40,181,168,.1);  border-color: var(--c-cyan);  color: var(--c-cyan); }
+.pill.active.alfafa { background: rgba(58,170,106,.1);  border-color: var(--c-good);  color: var(--c-good); }
+
+/* Top right controls */
+.top-controls { display: flex; align-items: center; gap: 8px; padding-right: 14px; border-right: 1px solid var(--c-border); }
+.top-date { font-family: var(--mono); font-size: 9px; color: var(--c-t3); letter-spacing: .5px; }
+.btn-icon {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 11px; border-radius: var(--r); border: 1px solid;
+  font-family: var(--font); font-size: 9px; font-weight: 600;
+  cursor: pointer; transition: all .15s; letter-spacing: .3px;
+  white-space: nowrap;
+}
+.btn-icon svg { width: 11px; height: 11px; flex-shrink: 0; }
+.btn-ge  { background: rgba(61,143,204,.1); border-color: rgba(61,143,204,.35); color: var(--c-sky2); }
+.btn-sh  { background: rgba(40,181,168,.1); border-color: rgba(40,181,168,.35);  color: var(--c-cyan); }
+.btn-ge:hover { background: rgba(61,143,204,.2); }
+.btn-sh:hover { background: rgba(40,181,168,.2); }
+.live-badge { display: flex; align-items: center; gap: 4px; font-size: 8px; font-weight: 700; color: var(--c-good); letter-spacing: 1px; text-transform: uppercase; }
+.live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--c-good); animation: blink 2.5s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── Left Panel ── */
+#panel-left {
+  background: var(--c-panel);
+  border-left: 1px solid var(--c-border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.pnl-hdr {
+  padding: 9px 13px 7px; border-bottom: 1px solid var(--c-border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.pnl-lbl { font-size: 7px; font-weight: 700; color: var(--c-t3); letter-spacing: 2.5px; text-transform: uppercase; }
+.pnl-tag { font-size: 8px; font-family: var(--mono); color: var(--c-gold3); background: rgba(200,168,75,.08); padding: 1px 6px; border-radius: 2px; border: 1px solid rgba(200,168,75,.18); }
+
+.pnl-scroll { flex: 1; overflow-y: auto; }
+
+/* KPI Cards */
+.kpi-grid { padding: 9px 11px; display: flex; flex-direction: column; gap: 5px; }
+.kpi {
+  background: var(--c-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r2);
+  padding: 9px 11px;
+  display: grid; grid-template-columns: 28px 1fr; gap: 0 8px;
+  align-items: center;
+  position: relative; overflow: hidden;
+  transition: border-color .15s;
+}
+.kpi:hover { border-color: var(--c-border2); }
+.kpi::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 2px; }
+.kpi.gold::after { background: var(--c-gold3); }
+.kpi.sky::after  { background: var(--c-sky); }
+.kpi.good::after { background: var(--c-good); }
+.kpi.red::after  { background: var(--c-low); }
+.kpi-ico  { font-size: 16px; grid-row: 1/3; display: flex; align-items: center; justify-content: center; }
+.kpi-val  { font-size: 20px; font-weight: 600; line-height: 1; font-family: var(--mono); }
+.kpi.gold .kpi-val { color: var(--c-gold2); }
+.kpi.sky  .kpi-val { color: var(--c-sky2); }
+.kpi.good .kpi-val { color: var(--c-good); }
+.kpi.red  .kpi-val { color: var(--c-low); }
+.kpi-lbl  { font-size: 8px; color: var(--c-t3); margin-top: 2px; letter-spacing: .2px; }
+.kpi-bar  { height: 2px; background: var(--c-border); border-radius: 1px; margin-top: 5px; grid-column: 1/3; overflow: hidden; }
+.kpi-fill { height: 100%; border-radius: 1px; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+
+/* Section divider */
+.sec-div {
+  padding: 7px 13px 5px;
+  display: flex; align-items: center; gap: 7px;
+  border-top: 1px solid var(--c-border); flex-shrink: 0;
+}
+.sec-div::after { content: ''; flex: 1; height: 1px; background: var(--c-border); }
+
+/* Health panel */
+.health { margin: 0 10px 5px; padding: 9px 11px; background: var(--c-card); border: 1px solid var(--c-border); border-radius: var(--r2); position: relative; }
+.health::before { content: ''; position: absolute; top: 0; left: 14px; right: 14px; height: 1px; background: linear-gradient(90deg, transparent, var(--c-sky), transparent); }
+.h-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--c-border); font-size: 8px; }
+.h-row:last-of-type { border-bottom: none; }
+.h-key { color: var(--c-t3); display: flex; align-items: center; gap: 5px; }
+.h-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: var(--c-t4); }
+.h-val { font-family: var(--mono); font-size: 8px; font-weight: 600; }
+.h-bar-wrap { margin-top: 6px; }
+.h-bar-row { display: flex; justify-content: space-between; font-size: 7px; color: var(--c-t4); margin-bottom: 3px; }
+.h-bar-bg { height: 3px; background: var(--c-border); border-radius: 2px; overflow: hidden; }
+.h-bar-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+
+/* Pivot rows */
+.pivot-row {
+  margin: 0 9px 3px;
+  padding: 8px 10px;
+  background: var(--c-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r2);
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; transition: all .15s;
+}
+.pivot-row:hover { border-color: var(--c-border2); transform: translateX(-1px); }
+.pivot-row.selected { border-color: var(--c-sky); background: rgba(61,143,204,.07); }
+.pr-name  { font-size: 11px; font-weight: 600; color: var(--c-t1); transition: color .15s; }
+.pr-meta  { font-size: 8px; color: var(--c-t3); margin-top: 2px; }
+.pr-badge { font-size: 8px; font-weight: 700; padding: 2px 7px; border-radius: 2px; font-family: var(--mono); letter-spacing: .5px; }
+
+/* ── Map Zone ── */
+#map-zone { position: relative; overflow: hidden; background: #060e1a; }
+
+/* Leaflet overrides */
+.leaflet-container { background: #060e1a !important; }
+.leaflet-control-zoom { border: 1px solid var(--c-border2) !important; border-radius: var(--r) !important; overflow: hidden; }
+.leaflet-control-zoom a { background: var(--c-panel) !important; color: var(--c-t2) !important; border-bottom: 1px solid var(--c-border) !important; width: 26px !important; height: 26px !important; line-height: 26px !important; font-size: 14px !important; }
+.leaflet-control-zoom a:hover { background: var(--c-card) !important; color: var(--c-sky2) !important; }
+.leaflet-popup-content-wrapper { background: var(--c-panel) !important; border: 1px solid var(--c-border2) !important; border-radius: var(--r2) !important; box-shadow: 0 8px 32px rgba(0,0,0,.8) !important; color: var(--c-t1) !important; }
+.leaflet-popup-tip { background: var(--c-panel) !important; }
+.leaflet-popup-content { margin: 0 !important; font-family: var(--font) !important; }
+.leaflet-popup-close-button { color: var(--c-t3) !important; top: 7px !important; right: 7px !important; }
+.leaflet-attribution-flag { display: none !important; }
+
+/* Map HUD */
+.map-hud { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 500; pointer-events: none; }
+.layer-btns { display: flex; gap: 3px; pointer-events: all; }
+.lbtn { padding: 4px 10px; background: rgba(7,17,31,.92); border: 1px solid var(--c-border2); border-radius: var(--r); color: var(--c-t3); font-family: var(--font); font-size: 8px; font-weight: 700; cursor: pointer; letter-spacing: .5px; text-transform: uppercase; transition: all .15s; backdrop-filter: blur(8px); }
+.lbtn:hover { border-color: var(--c-sky); color: var(--c-sky2); }
+.lbtn.on { background: rgba(61,143,204,.18); border-color: var(--c-sky); color: var(--c-sky2); }
+.ndvi-legend { background: rgba(7,17,31,.92); border: 1px solid var(--c-border2); border-radius: var(--r2); padding: 8px 11px; backdrop-filter: blur(10px); }
+.leg-title { font-size: 7px; font-weight: 700; color: var(--c-t3); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+.leg-row { display: flex; align-items: center; gap: 6px; font-size: 8px; color: var(--c-t2); margin-bottom: 3px; }
+.leg-swatch { width: 14px; height: 3px; border-radius: 1px; flex-shrink: 0; }
+.alert-chips { position: absolute; bottom: 46px; left: 10px; right: 10px; display: flex; gap: 5px; flex-wrap: wrap; z-index: 500; pointer-events: none; }
+.chip { padding: 3px 9px; background: rgba(201,74,60,.15); border: 1px solid rgba(201,74,60,.4); border-radius: var(--r); font-size: 8px; font-weight: 600; color: #e07868; backdrop-filter: blur(8px); animation: slideUp .3s ease both; }
+@keyframes slideUp { from { opacity:0; transform: translateY(5px); } to { opacity:1; transform: none; } }
+
+/* View toggle */
+.view-toggle { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 600; display: flex; border-radius: 20px; overflow: hidden; border: 1px solid var(--c-border2); box-shadow: 0 4px 20px rgba(0,0,0,.7); }
+.vt { padding: 6px 18px; border: none; font-family: var(--font); font-size: 9px; font-weight: 700; cursor: pointer; letter-spacing: .5px; transition: all .2s; }
+.vt.on  { background: rgba(61,143,204,.2); color: var(--c-sky2); }
+.vt.off { background: var(--c-nav); color: var(--c-t3); }
+.vt:first-child { border-left: 1px solid var(--c-border2); }
+
+/* Satellite pane */
+#sat-pane { position: absolute; inset: 0; display: none; flex-direction: column; background: #060e1a; z-index: 400; }
+.sat-hdr { padding: 6px 13px; background: var(--c-nav); border-bottom: 1px solid var(--c-border2); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.sat-ftr { padding: 4px 13px; background: var(--c-nav); border-top: 1px solid var(--c-border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.sat-mode-btn { padding: 3px 10px; background: transparent; border: 1px solid var(--c-border2); border-radius: var(--r); color: var(--c-t3); font-family: var(--font); font-size: 8px; font-weight: 700; cursor: pointer; transition: all .15s; letter-spacing: .3px; }
+.sat-mode-btn:hover { border-color: var(--c-sky); color: var(--c-sky2); }
+.sat-mode-btn.on { background: rgba(61,143,204,.15); border-color: var(--c-sky); color: var(--c-sky2); }
+#sat-map-div { flex: 1; min-height: 0; position: relative; }
+#sat-leaflet { width: 100%; height: 100%; }
+.sat-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--c-t4); }
+.sat-loading { position: absolute; inset: 0; background: rgba(6,14,26,.85); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px; z-index: 50; }
+.spinner { width: 28px; height: 28px; border: 2px solid var(--c-border2); border-top-color: var(--c-cyan); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Right Panel ── */
+#panel-right { background: var(--c-panel); border-right: 1px solid var(--c-border); display: flex; flex-direction: column; overflow: hidden; }
+
+.detail-card { margin: 9px; padding: 11px; background: var(--c-card); border: 1px solid var(--c-border); border-radius: var(--r2); position: relative; flex-shrink: 0; }
+.detail-card::before { content: ''; position: absolute; top: 0; left: 14px; right: 14px; height: 1px; background: linear-gradient(90deg, transparent, var(--c-gold3), transparent); }
+.dc-empty { text-align: center; color: var(--c-t4); font-size: 9px; padding: 14px 0; line-height: 2; }
+.dc-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.dc-gauge { width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0; border: 1.5px solid; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: var(--mono); }
+.dc-gauge .gv { font-size: 16px; font-weight: 700; line-height: 1; }
+.dc-gauge .gl { font-size: 7px; font-weight: 700; margin-top: 2px; opacity: .8; letter-spacing: .5px; }
+.dc-info .dc-name   { font-size: 12px; font-weight: 700; }
+.dc-info .dc-crop   { font-size: 8px; color: var(--c-t3); margin-top: 3px; }
+.dc-info .dc-date   { font-size: 7px; color: var(--c-t4); font-family: var(--mono); margin-top: 2px; }
+.dc-info .dc-trend  { font-size: 9px; font-weight: 600; margin-top: 3px; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 9px; }
+.stat-box { background: var(--c-nav); border: 1px solid var(--c-border); border-radius: var(--r); padding: 6px 8px; text-align: center; }
+.stat-box .sv { font-family: var(--mono); font-size: 13px; font-weight: 700; }
+.stat-box .sl { font-size: 7px; color: var(--c-t4); margin-top: 2px; letter-spacing: .2px; }
+.action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 7px; }
+.action-btn { display: block; padding: 5px 4px; border-radius: var(--r); font-family: var(--font); font-size: 8px; font-weight: 700; text-align: center; text-decoration: none; transition: background .15s; border: 1px solid; letter-spacing: .3px; cursor: pointer; background: transparent; }
+.action-btn.ge   { border-color: rgba(61,143,204,.35); color: var(--c-sky2); }
+.action-btn.sat  { border-color: rgba(40,181,168,.35);  color: var(--c-cyan); }
+.action-btn.ge:hover  { background: rgba(61,143,204,.12); }
+.action-btn.sat:hover { background: rgba(40,181,168,.10); }
+
+.chart-card { margin: 0 9px 9px; background: var(--c-card); border: 1px solid var(--c-border); border-radius: var(--r2); padding: 10px 11px; flex-shrink: 0; }
+.chart-title { font-size: 7px; font-weight: 700; color: var(--c-t3); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+
+.right-scroll { flex: 1; overflow-y: auto; }
+
+.status-list { padding: 0 9px; }
+.sl-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--c-border); }
+.sl-row:last-child { border-bottom: none; }
+.sl-left { display: flex; align-items: center; gap: 7px; }
+.sl-bar { width: 2px; height: 26px; border-radius: 1px; flex-shrink: 0; }
+.sl-name { font-size: 9px; font-weight: 700; }
+.sl-meta { font-size: 7px; color: var(--c-t3); margin-top: 2px; }
+.sl-right { text-align: left; }
+.sl-ndvi { font-size: 12px; font-weight: 700; font-family: var(--mono); }
+.sl-status { font-size: 7px; font-weight: 700; margin-top: 1px; letter-spacing: .5px; }
+
+.alert-panel { margin: 0 9px 7px; padding: 9px 10px; background: var(--c-card); border: 1px solid var(--c-border); border-radius: var(--r2); border-right: 2px solid var(--c-low); }
+.alert-panel.positive { border-right-color: var(--c-good); }
+.alert-title { font-size: 7px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 7px; }
+.alert-item { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 5px; }
+.alert-item:last-child { margin-bottom: 0; }
+.alert-icon { font-size: 10px; flex-shrink: 0; margin-top: 1px; }
+.alert-text { font-size: 8px; line-height: 1.7; color: var(--c-t2); }
+.alert-text strong { font-weight: 700; color: var(--c-t1); }
+
+/* Popup styles */
+.popup-wrap { direction: rtl; padding: 12px; min-width: 200px; font-family: var(--font); }
+.popup-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; padding-bottom: 7px; border-bottom: 1px solid var(--c-border); }
+.popup-name { font-size: 12px; font-weight: 700; }
+.popup-badge { font-size: 8px; font-family: var(--mono); padding: 2px 6px; border-radius: 2px; font-weight: 700; border: 1px solid; }
+.popup-row { display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 3px; }
+.popup-row .k { color: var(--c-t3); }
+.popup-row .v { font-weight: 600; }
+.popup-bars { background: var(--c-nav); border-radius: var(--r); padding: 6px 7px; margin: 8px 0; border: 1px solid var(--c-border); }
+.popup-bars-title { font-size: 6px; color: var(--c-t4); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 5px; }
+.bar-row { display: flex; align-items: flex-end; gap: 3px; height: 34px; }
+.bar-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
+.bar-fill { width: 100%; border-radius: 1px 1px 0 0; min-height: 3px; }
+.bar-lbl { font-size: 5px; color: var(--c-t4); font-family: var(--mono); }
+.popup-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 8px; }
+.popup-actions a { display: block; padding: 5px 3px; border-radius: var(--r); font-size: 8px; font-weight: 700; text-align: center; text-decoration: none; border: 1px solid; transition: background .15s; }
+
+/* Sentinel Hub Modal */
+.sh-overlay { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(4,10,20,.9); backdrop-filter: blur(8px); align-items: center; justify-content: center; }
+.sh-overlay.open { display: flex; }
+.sh-box { background: var(--c-panel); border: 1px solid var(--c-border2); border-top: 2px solid var(--c-cyan); border-radius: var(--r3); padding: 22px; width: 460px; max-width: 95vw; direction: rtl; }
+.sh-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.sh-title  { font-size: 13px; font-weight: 700; color: var(--c-cyan); }
+.sh-subtitle { font-size: 8px; color: var(--c-t3); margin-top: 3px; letter-spacing: .5px; }
+.sh-close  { background: none; border: none; color: var(--c-t3); font-size: 17px; cursor: pointer; line-height: 1; }
+.sh-info { background: var(--c-card); border: 1px solid var(--c-border); border-radius: var(--r2); padding: 9px 11px; margin-bottom: 14px; font-size: 8px; color: var(--c-t2); line-height: 1.9; }
+.sh-info a { color: var(--c-cyan); }
+.sh-label { font-size: 8px; font-weight: 700; color: var(--c-t3); letter-spacing: 1.5px; text-transform: uppercase; display: block; margin-bottom: 4px; }
+.sh-input { width: 100%; background: var(--c-nav); border: 1px solid var(--c-border2); border-radius: var(--r); padding: 7px 10px; color: var(--c-t1); font-family: var(--mono); font-size: 10px; outline: none; direction: ltr; margin-bottom: 10px; transition: border-color .15s; }
+.sh-input:focus { border-color: var(--c-cyan); }
+.sh-input[readonly] { opacity: .6; cursor: default; }
+.sh-date-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 13px; }
+.sh-log { background: var(--c-nav); border: 1px solid var(--c-border); border-radius: var(--r); padding: 8px 10px; font-family: var(--mono); font-size: 8px; max-height: 140px; overflow-y: auto; line-height: 2; direction: ltr; margin-top: 12px; display: none; white-space: pre-wrap; }
+.sh-actions { display: flex; gap: 7px; margin-top: 13px; }
+.sh-btn { padding: 8px 14px; border-radius: var(--r); font-family: var(--font); font-size: 10px; font-weight: 700; cursor: pointer; letter-spacing: .5px; transition: all .15s; border: 1px solid; }
+.sh-btn.primary { flex: 1; background: rgba(40,181,168,.15); border-color: var(--c-cyan); color: var(--c-cyan); }
+.sh-btn.primary:hover { background: rgba(40,181,168,.25); }
+.sh-btn.primary:disabled { opacity: .5; cursor: not-allowed; }
+.sh-btn.secondary { background: transparent; border-color: var(--c-border2); color: var(--c-t3); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     TOPBAR
+════════════════════════════════════════ -->
+<header id="topbar">
+  <div class="brand">
+    <div class="brand-seal">🌾</div>
+    <div>
+      <div class="brand-name">مشروع القمة الزراعي</div>
+      <div class="brand-sub">نظام المراقبة الجغرافية · السودان</div>
+    </div>
+  </div>
+  <div class="top-sep"></div>
+  <div class="sys-info">
+    <div class="sys-title">نظام رصد المحاصيل بالاستشعار عن بُعد</div>
+    <div class="sys-ver">NDVI-GIS · 2025–2026 · v5.0</div>
+  </div>
+  <div class="filters">
+    <button class="pill active" data-f="all">الكل</button>
+    <button class="pill potato" data-f="Potato">البطاطس</button>
+    <button class="pill onion"  data-f="Onion">البصل</button>
+    <button class="pill alfafa" data-f="Alfafa">البرسيم</button>
+  </div>
+  <div class="top-controls">
+    <div class="top-date" id="top-date"></div>
+    <button class="btn-icon btn-ge" id="btn-ge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="2" y1="12" x2="22" y2="12"/>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </svg>
+      Google Earth
+    </button>
+    <button class="btn-icon btn-sh" id="btn-sh">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21.21 15.89A9 9 0 1 1 8 2.83"/>
+        <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+      </svg>
+      <span id="btn-sh-lbl">تحديث Sentinel</span>
+    </button>
+    <div class="live-badge">
+      <div class="live-dot" id="live-dot"></div>
+      <span id="live-lbl">مباشر</span>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════
+     LEFT PANEL
+════════════════════════════════════════ -->
+<aside id="panel-left">
+  <div class="pnl-hdr">
+    <span class="pnl-lbl">مؤشرات الأداء</span>
+    <span class="pnl-tag" id="kpi-tag">— بيفوت</span>
+  </div>
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <div class="sec-div"><span class="pnl-lbl">حالة البيانات</span></div>
+  <div class="health" id="health-panel">
+    <div class="h-row"><span class="h-key"><span class="h-dot" id="hd-1"></span>آخر قراءة</span><span class="h-val" id="hv-1">—</span></div>
+    <div class="h-row"><span class="h-key"><span class="h-dot" id="hd-2"></span>عمر البيانات</span><span class="h-val" id="hv-2">—</span></div>
+    <div class="h-row"><span class="h-key"><span class="h-dot" id="hd-3"></span>إجمالي القراءات</span><span class="h-val" id="hv-3">—</span></div>
+    <div class="h-row"><span class="h-key"><span class="h-dot" id="hd-4"></span>تغطية البيفوت</span><span class="h-val" id="hv-4">—</span></div>
+    <div class="h-bar-wrap">
+      <div class="h-bar-row"><span>حداثة البيانات</span><span id="h-pct">—</span></div>
+      <div class="h-bar-bg"><div class="h-bar-fill" id="h-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="sec-div"><span class="pnl-lbl">البيفوت النشطة</span></div>
+  <div class="pnl-scroll" id="pivot-list"></div>
+</aside>
+
+<!-- ═══════════════════════════════════════
+     MAP ZONE
+════════════════════════════════════════ -->
+<main id="map-zone">
+
+  <!-- Leaflet map -->
+  <div id="map-pane" style="position:absolute;inset:0">
+    <div id="main-map" style="width:100%;height:100%"></div>
+    <div class="map-hud">
+      <div class="layer-btns">
+        <button class="lbtn on" id="lbtn-sat"  onclick="App.setLayer('sat')">أقمار صناعية</button>
+        <button class="lbtn"    id="lbtn-osm"  onclick="App.setLayer('osm')">خريطة</button>
+        <button class="lbtn"    id="lbtn-topo" onclick="App.setLayer('topo')">تضاريس</button>
+      </div>
+      <div class="ndvi-legend">
+        <div class="leg-title">مؤشر NDVI</div>
+        <div class="leg-row"><div class="leg-swatch" style="background:var(--c-low)"></div>≤ 0.2 &nbsp;ضعيف</div>
+        <div class="leg-row"><div class="leg-swatch" style="background:var(--c-med)"></div>0.3–0.4 &nbsp;متوسط</div>
+        <div class="leg-row"><div class="leg-swatch" style="background:var(--c-good)"></div>0.5–0.6 &nbsp;جيد</div>
+        <div class="leg-row"><div class="leg-swatch" style="background:var(--c-exc)"></div>≥ 0.7 &nbsp;ممتاز</div>
+      </div>
+    </div>
+    <div class="alert-chips" id="alert-chips"></div>
+  </div>
+
+  <!-- Satellite pane -->
+  <div id="sat-pane">
+    <div class="sat-hdr">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:8px;font-weight:700;color:var(--c-t3);letter-spacing:2px;text-transform:uppercase">🛰 Sentinel-2 · ESRI Imagery</span>
+        <span id="sat-pivot-name" style="font-size:10px;font-weight:700;color:var(--c-sky2)">اختر بيفوتاً</span>
+        <span id="sat-ndvi-badge" style="font-size:8px;font-family:var(--mono);font-weight:700;padding:2px 7px;border-radius:2px;background:rgba(61,143,204,.1);border:1px solid rgba(61,143,204,.3);color:var(--c-sky2)">NDVI —</span>
+      </div>
+      <div style="display:flex;gap:4px">
+        <button class="sat-mode-btn on" data-mode="true"  onclick="App.setSatMode(this)">صورة حقيقية</button>
+        <button class="sat-mode-btn"    data-mode="ndvi"  onclick="App.setSatMode(this)">🌿 NDVI</button>
+        <button class="sat-mode-btn"    data-mode="infra" onclick="App.setSatMode(this)">🔴 أشعة تحت حمراء</button>
+        <button class="sat-mode-btn"    data-mode="moist" onclick="App.setSatMode(this)">💧 رطوبة</button>
+      </div>
+    </div>
+    <div id="sat-map-div">
+      <div id="sat-leaflet"></div>
+      <div class="sat-placeholder" id="sat-placeholder">
+        <div style="font-size:48px;opacity:.15">🛰</div>
+        <div style="font-size:9px;letter-spacing:1px;text-align:center;line-height:2">اختر بيفوتاً من القائمة<br>لعرض صورته الفضائية</div>
+      </div>
+      <div class="sat-loading" id="sat-loading">
+        <div class="spinner"></div>
+        <div style="font-size:9px;color:var(--c-cyan);font-family:var(--mono)">تحميل الصورة...</div>
+      </div>
+    </div>
+    <div class="sat-ftr">
+      <span style="font-size:7px;color:var(--c-t4);font-family:var(--mono)">ESRI World Imagery · © Esri, Maxar, Earthstar Geographics · Sentinel-2 © ESA</span>
+      <span id="sat-zoom" style="font-size:7px;color:var(--c-t3);font-family:var(--mono)">Zoom: —</span>
+    </div>
+  </div>
+
+  <!-- Toggle -->
+  <div class="view-toggle">
+    <button class="vt on"  id="vt-map" onclick="App.switchView('map')">🗺 خريطة NDVI</button>
+    <button class="vt off" id="vt-sat" onclick="App.switchView('sat')">🛰 صورة فضائية</button>
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════
+     RIGHT PANEL
+════════════════════════════════════════ -->
+<aside id="panel-right">
+  <div class="pnl-hdr">
+    <span class="pnl-lbl">تفاصيل البيفوت</span>
+    <span class="pnl-tag" id="sel-badge">— محدد</span>
+  </div>
+  <div class="detail-card" id="detail-card">
+    <div class="dc-empty">اختر بيفوتاً من الخريطة<br>أو من القائمة</div>
+  </div>
+  <div class="pnl-hdr" style="margin-top:3px">
+    <span class="pnl-lbl">مسار NDVI الزمني</span>
+    <span class="pnl-tag" id="chart-label">الكل</span>
+  </div>
+  <div class="chart-card" style="margin-top:0;border-radius:0 0 var(--r2) var(--r2)">
+    <canvas id="line-chart" height="130"></canvas>
+  </div>
+  <div class="pnl-hdr" style="margin-top:3px"><span class="pnl-lbl">ترتيب البيفوت</span></div>
+  <div class="chart-card" style="padding:6px 11px 2px">
+    <div class="status-list" id="status-list" style="padding:0"></div>
+  </div>
+  <div class="sec-div" style="margin-top:3px"><span class="pnl-lbl">التنبيهات والتوصيات</span></div>
+  <div class="right-scroll" id="alerts-box"></div>
+</aside>
+
+<!-- ═══════════════════════════════════════
+     SENTINEL HUB MODAL
+════════════════════════════════════════ -->
+<div class="sh-overlay" id="sh-modal">
+  <div class="sh-box">
+    <div class="sh-header">
+      <div>
+        <div class="sh-title">🛰 تحديث NDVI من Sentinel Hub</div>
+        <div class="sh-subtitle">Copernicus Data Space · Sentinel-2 L2A · Statistical API · 10m Resolution</div>
+      </div>
+      <button class="sh-close" id="sh-close">✕</button>
+    </div>
+    <div class="sh-info">
+      <strong style="color:var(--c-gold2)">كيفية الحصول على Client Secret:</strong><br>
+      اذهب إلى <a href="https://dataspace.copernicus.eu" target="_blank">dataspace.copernicus.eu</a>
+      → Dashboard → User Settings → OAuth Clients → أنشئ Client جديد أو انسخ Secret الموجود
+    </div>
+    <label class="sh-label">Client ID</label>
+    <input class="sh-input" id="sh-client-id" type="text" readonly
+           value="sh-08a731b4-75b9-4247-85e6-cb22e62b4356" title="Client ID محفوظ تلقائياً">
+    <label class="sh-label">Client Secret</label>
+    <input class="sh-input" id="sh-client-secret" type="password" placeholder="أدخل Client Secret هنا" autocomplete="off">
+    <div class="sh-date-grid">
+      <div>
+        <label class="sh-label">من تاريخ</label>
+        <input class="sh-input" id="sh-date-from" type="date" style="margin-bottom:0">
+      </div>
+      <div>
+        <label class="sh-label">إلى تاريخ</label>
+        <input class="sh-input" id="sh-date-to" type="date" style="margin-bottom:0">
+      </div>
+    </div>
+    <div class="sh-actions">
+      <button class="sh-btn primary" id="sh-run-btn">🛰 جلب NDVI الحقيقي</button>
+      <button class="sh-btn secondary" id="sh-cancel-btn">إلغاء</button>
+    </div>
+    <div class="sh-log" id="sh-log"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════ -->
+<script>
+"use strict";
+
+// ─────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────
+const NDVI_DATA = [{d:"12/7/2025",c:"Potato",p:"Piovt 34",v:.1},{d:"12/12/2025",c:"Potato",p:"Piovt 34",v:.1},{d:"12/17/2025",c:"Potato",p:"Piovt 34",v:.1},{d:"12/22/2025",c:"Potato",p:"Piovt 34",v:.1},{d:"12/24/2025",c:"Potato",p:"Piovt 34",v:.1},{d:"12/27/2025",c:"Potato",p:"Piovt 34",v:.1},{d:"1/1/2026",c:"Potato",p:"Piovt 34",v:.1},{d:"1/3/2026",c:"Potato",p:"Piovt 34",v:.1},{d:"1/6/2026",c:"Potato",p:"Piovt 34",v:.1},{d:"1/11/2026",c:"Potato",p:"Piovt 34",v:.1},{d:"1/16/2026",c:"Potato",p:"Piovt 34",v:.1},{d:"1/21/2026",c:"Potato",p:"Piovt 34",v:.2},{d:"1/26/2026",c:"Potato",p:"Piovt 34",v:.2},{d:"1/31/2026",c:"Potato",p:"Piovt 34",v:.3},{d:"2/5/2026",c:"Potato",p:"Piovt 34",v:.3},{d:"2/10/2026",c:"Potato",p:"Piovt 34",v:.3},{d:"2/15/2026",c:"Potato",p:"Piovt 34",v:.5},{d:"2/20/2026",c:"Potato",p:"Piovt 34",v:.5},{d:"2/25/2026",c:"Potato",p:"Piovt 34",v:.5},{d:"3/2/2026",c:"Potato",p:"Piovt 34",v:.5},
+  {d:"12/7/2025",c:"Alfafa",p:"Piovt 12",v:.6},{d:"12/12/2025",c:"Alfafa",p:"Piovt 12",v:.6},{d:"12/17/2025",c:"Alfafa",p:"Piovt 12",v:.2},{d:"12/22/2025",c:"Alfafa",p:"Piovt 12",v:.1},{d:"12/24/2025",c:"Alfafa",p:"Piovt 12",v:.1},{d:"12/27/2025",c:"Alfafa",p:"Piovt 12",v:.1},{d:"1/1/2026",c:"Alfafa",p:"Piovt 12",v:.1},{d:"1/3/2026",c:"Alfafa",p:"Piovt 12",v:.1},{d:"1/6/2026",c:"Alfafa",p:"Piovt 12",v:.1},{d:"1/11/2026",c:"Alfafa",p:"Piovt 12",v:.1},{d:"1/16/2026",c:"Alfafa",p:"Piovt 12",v:.1},{d:"1/21/2026",c:"Alfafa",p:"Piovt 12",v:.1},{d:"1/26/2026",c:"Alfafa",p:"Piovt 12",v:.1},{d:"1/31/2026",c:"Alfafa",p:"Piovt 12",v:.2},{d:"2/5/2026",c:"Alfafa",p:"Piovt 12",v:.1},{d:"2/10/2026",c:"Alfafa",p:"Piovt 12",v:.1},{d:"2/15/2026",c:"Alfafa",p:"Piovt 12",v:.1},{d:"2/20/2026",c:"Alfafa",p:"Piovt 12",v:.1},{d:"2/25/2026",c:"Alfafa",p:"Piovt 12",v:.2},{d:"3/2/2026",c:"Alfafa",p:"Piovt 12",v:.2},
+  {d:"12/7/2025",c:"Onion",p:"piovt10",v:.1},{d:"12/12/2025",c:"Onion",p:"piovt10",v:.1},{d:"12/17/2025",c:"Onion",p:"piovt10",v:.1},{d:"12/22/2025",c:"Onion",p:"piovt10",v:.1},{d:"12/24/2025",c:"Onion",p:"piovt10",v:.1},{d:"12/27/2025",c:"Onion",p:"piovt10",v:.2},{d:"1/1/2026",c:"Onion",p:"piovt10",v:.2},{d:"1/3/2026",c:"Onion",p:"piovt10",v:.2},{d:"1/6/2026",c:"Onion",p:"piovt10",v:.2},{d:"1/11/2026",c:"Onion",p:"piovt10",v:.2},{d:"1/16/2026",c:"Onion",p:"piovt10",v:.2},{d:"1/21/2026",c:"Onion",p:"piovt10",v:.2},{d:"1/26/2026",c:"Onion",p:"piovt10",v:.2},{d:"1/31/2026",c:"Onion",p:"piovt10",v:.3},{d:"2/5/2026",c:"Onion",p:"piovt10",v:.3},{d:"2/10/2026",c:"Onion",p:"piovt10",v:.3},{d:"2/15/2026",c:"Onion",p:"piovt10",v:.4},{d:"2/20/2026",c:"Onion",p:"piovt10",v:.5},{d:"2/25/2026",c:"Onion",p:"piovt10",v:.6},{d:"3/2/2026",c:"Onion",p:"piovt10",v:.6},
+  {d:"12/7/2025",c:"Potato",p:"Piovt 22",v:.1},{d:"12/12/2025",c:"Potato",p:"Piovt 22",v:.1},{d:"12/17/2025",c:"Potato",p:"Piovt 22",v:.1},{d:"12/22/2025",c:"Potato",p:"Piovt 22",v:.1},{d:"12/24/2025",c:"Potato",p:"Piovt 22",v:.1},{d:"12/27/2025",c:"Potato",p:"Piovt 22",v:.1},{d:"1/1/2026",c:"Potato",p:"Piovt 22",v:.1},{d:"1/3/2026",c:"Potato",p:"Piovt 22",v:.1},{d:"1/6/2026",c:"Potato",p:"Piovt 22",v:.1},{d:"1/11/2026",c:"Potato",p:"Piovt 22",v:.1},{d:"1/16/2026",c:"Potato",p:"Piovt 22",v:.1},{d:"1/21/2026",c:"Potato",p:"Piovt 22",v:.1},{d:"1/26/2026",c:"Potato",p:"Piovt 22",v:.1},{d:"1/31/2026",c:"Potato",p:"Piovt 22",v:.2},{d:"2/5/2026",c:"Potato",p:"Piovt 22",v:.3},{d:"2/10/2026",c:"Potato",p:"Piovt 22",v:.3},{d:"2/15/2026",c:"Potato",p:"Piovt 22",v:.5},{d:"2/20/2026",c:"Potato",p:"Piovt 22",v:.5},{d:"2/25/2026",c:"Potato",p:"Piovt 22",v:.6},{d:"3/2/2026",c:"Potato",p:"Piovt 22",v:.6},
+  {d:"12/7/2025",c:"Potato",p:"Piovt 6",v:.1},{d:"12/12/2025",c:"Potato",p:"Piovt 6",v:.2},{d:"12/17/2025",c:"Potato",p:"Piovt 6",v:.2},{d:"12/22/2025",c:"Potato",p:"Piovt 6",v:.1},{d:"12/24/2025",c:"Potato",p:"Piovt 6",v:.1},{d:"12/27/2025",c:"Potato",p:"Piovt 6",v:.1},{d:"1/1/2026",c:"Potato",p:"Piovt 6",v:.2},{d:"1/3/2026",c:"Potato",p:"Piovt 6",v:.1},{d:"1/6/2026",c:"Potato",p:"Piovt 6",v:.1},{d:"1/11/2026",c:"Potato",p:"Piovt 6",v:.2},{d:"1/16/2026",c:"Potato",p:"Piovt 6",v:.2},{d:"1/21/2026",c:"Potato",p:"Piovt 6",v:.3},{d:"1/26/2026",c:"Potato",p:"Piovt 6",v:.3},{d:"1/31/2026",c:"Potato",p:"Piovt 6",v:.5},{d:"2/5/2026",c:"Potato",p:"Piovt 6",v:.5},{d:"2/10/2026",c:"Potato",p:"Piovt 6",v:.6},{d:"2/15/2026",c:"Potato",p:"Piovt 6",v:.7},{d:"2/20/2026",c:"Potato",p:"Piovt 6",v:.7},{d:"2/25/2026",c:"Potato",p:"Piovt 6",v:.8},{d:"3/2/2026",c:"Potato",p:"Piovt 6",v:.8},
+  {d:"12/12/2025",c:"Onion",p:"piovt 31",v:.2},{d:"12/17/2025",c:"Onion",p:"piovt 31",v:.2},{d:"12/22/2025",c:"Onion",p:"piovt 31",v:.2},{d:"12/24/2025",c:"Onion",p:"piovt 31",v:.2},{d:"12/27/2025",c:"Onion",p:"piovt 31",v:.2},{d:"1/1/2026",c:"Onion",p:"piovt 31",v:.2},{d:"1/3/2026",c:"Onion",p:"piovt 31",v:.2},{d:"1/6/2026",c:"Onion",p:"piovt 31",v:.1},{d:"1/11/2026",c:"Onion",p:"piovt 31",v:.2},{d:"1/16/2026",c:"Onion",p:"piovt 31",v:.2},{d:"1/21/2026",c:"Onion",p:"piovt 31",v:.2},{d:"1/26/2026",c:"Onion",p:"piovt 31",v:.1},{d:"1/31/2026",c:"Onion",p:"piovt 31",v:.2},{d:"2/5/2026",c:"Onion",p:"piovt 31",v:.1},{d:"2/10/2026",c:"Onion",p:"piovt 31",v:.1},{d:"2/15/2026",c:"Onion",p:"piovt 31",v:.1},{d:"2/20/2026",c:"Onion",p:"piovt 31",v:.1},{d:"2/25/2026",c:"Onion",p:"piovt 31",v:.2},{d:"3/2/2026",c:"Onion",p:"piovt 31",v:.2},{d:"3/7/2026",c:"Onion",p:"piovt 31",v:.2}];
+
+const POLYGONS = {"Piovt 12":[[16.50325737,33.77716827],[16.50251443,33.77642653],[16.50185515,33.77611068],[16.50143866,33.77599761],[16.50104188,33.77595524],[16.50072037,33.77592716],[16.50042801,33.77596901],[16.50009498,33.77606292],[16.49976535,33.77614540],[16.49937004,33.77633926],[16.49919216,33.77646223],[16.49888225,33.77670639],[16.49869106,33.77690316],[16.49851741,33.77707319],[16.49832773,33.77730791],[16.49820400,33.77752165],[16.49806501,33.77786932],[16.49796837,33.77809527],[16.49790675,33.77839239],[16.49787665,33.77870308],[16.49783766,33.77904973],[16.49784327,33.77930715],[16.49788225,33.77953751],[16.49801283,33.78006865],[16.49830213,33.78070224],[16.49857840,33.78111340],[16.49889654,33.78145020],[16.49920820,33.78166304],[16.49978409,33.78196898],[16.50027230,33.78210632],[16.50084590,33.78217550],[16.50140155,33.78212017],[16.50181040,33.78202118],[16.50210814,33.78188739],[16.50240038,33.78173082],[16.50274196,33.78148930],[16.50303130,33.78121168],[16.50324257,33.78095215],[16.50346305,33.78062192],[16.50365249,33.78024392],[16.50382619,33.77959776],[16.50387561,33.77893682],[16.50378379,33.77828796],[16.50356324,33.77767507],[16.50325737,33.77716827]],
+  "Piovt 22":[[16.51164514,33.78479233],[16.51125917,33.78417619],[16.51085509,33.78376999],[16.51062328,33.78359694],[16.51041707,33.78349176],[16.51019952,33.78338592],[16.51002188,33.78332101],[16.50986520,33.78328890],[16.50957068,33.78324247],[16.50938131,33.78323506],[16.50924684,33.78322454],[16.50906802,33.78322849],[16.50888956,33.78326529],[16.50877032,33.78328996],[16.50860664,33.78335200],[16.50843221,33.78340752],[16.50824115,33.78349379],[16.50808840,33.78356451],[16.50790973,33.78366937],[16.50776305,33.78377089],[16.50766989,33.78386559],[16.50758325,33.78394094],[16.50749227,33.78404466],[16.50741716,33.78416444],[16.50731775,33.78430782],[16.50720622,33.78448480],[16.50709130,33.78471587],[16.50701701,33.78491316],[16.50699636,33.78502385],[16.50696117,33.78515059],[16.50691452,33.78534797],[16.50689700,33.78549015],[16.50689105,33.78561995],[16.50690136,33.78579675],[16.50692298,33.78596200],[16.50693764,33.78610660],[16.50695228,33.78625790],[16.50700352,33.78642916],[16.50704534,33.78657894],[16.50708746,33.78673548],[16.50714595,33.78691213],[16.50721053,33.78704562],[16.50728714,33.78717106],[16.50735109,33.78728604],[16.50746899,33.78741337],[16.50758704,33.78753013],[16.50772543,33.78766559],[16.50793929,33.78782765],[16.50813548,33.78796556],[16.50835255,33.78805922],[16.50855391,33.78814783],[16.50877291,33.78821008],[16.50897914,33.78824647],[16.50923564,33.78828448],[16.50947578,33.78828797],[16.50966756,33.78827717],[16.50981141,33.78824647],[16.51000465,33.78820328],[16.51023992,33.78810297],[16.51036946,33.78804083],[16.51055164,33.78794751],[16.51067141,33.78785084],[16.51077115,33.78780321],[16.51090345,33.78767445],[16.51106131,33.78755276],[16.51117576,33.78739524],[16.51136338,33.78716131],[16.51148256,33.78697592],[16.51159312,33.78675107],[16.51168086,33.78649619],[16.51174634,33.78622739],[16.51178951,33.78581447],[16.51172055,33.78522274],[16.51164514,33.78479233]],
+  "piovt 31":[[16.58232894,33.69904612],[16.58169589,33.69812008],[16.58100673,33.69748769],[16.58052750,33.69715505],[16.58006224,33.69696996],[16.57936144,33.69682869],[16.57856632,33.69684032],[16.57793433,33.69695405],[16.57738118,33.69721771],[16.57693665,33.69751672],[16.57630002,33.69810691],[16.57596167,33.69864993],[16.57572517,33.69916957],[16.57556121,33.69984038],[16.57553923,33.70041343],[16.57560997,33.70117277],[16.57582664,33.70184335],[16.57597367,33.70210188],[16.57611123,33.70235104],[16.57635591,33.70271612],[16.57648317,33.70288904],[16.57665032,33.70305151],[16.57688081,33.70322783],[16.57709956,33.70338997],[16.57732342,33.70352719],[16.57765940,33.70368599],[16.57795046,33.70382082],[16.57822904,33.70388729],[16.57862386,33.70394998],[16.57903347,33.70397932],[16.57955373,33.70390970],[16.57994960,33.70385346],[16.58028455,33.70375698],[16.58076826,33.70353464],[16.58109350,33.70331333],[16.58152934,33.70293287],[16.58195934,33.70239207],[16.58244492,33.70145815],[16.58256372,33.70012026],[16.58232894,33.69904612]],
+  "Piovt 34":[[16.53116595,33.73014369],[16.53065348,33.72958386],[16.53028764,33.72927088],[16.52972278,33.72895647],[16.52938192,33.72879224],[16.52876008,33.72865598],[16.52842889,33.72862251],[16.52801946,33.72864370],[16.52765840,33.72869298],[16.52731410,33.72877440],[16.52695047,33.72892963],[16.52664782,33.72908379],[16.52634746,33.72925513],[16.52615541,33.72941148],[16.52586641,33.72965455],[16.52572079,33.72984384],[16.52551425,33.73009901],[16.52531812,33.73039214],[16.52516913,33.73070531],[16.52507253,33.73100451],[16.52497749,33.73130560],[16.52491177,33.73159765],[16.52488332,33.73174875],[16.52487669,33.73192708],[16.52487424,33.73211190],[16.52485984,33.73226877],[16.52486965,33.73247862],[16.52486758,33.73272252],[16.52488788,33.73285546],[16.52492431,33.73304750],[16.52498432,33.73325900],[16.52503985,33.73340604],[16.52508658,33.73358166],[16.52515370,33.73375920],[16.52523509,33.73395764],[16.52533291,33.73414155],[16.52543752,33.73431824],[16.52557638,33.73451223],[16.52567744,33.73463297],[16.52582209,33.73478866],[16.52598114,33.73495108],[16.52613599,33.73507625],[16.52631695,33.73522104],[16.52647297,33.73531735],[16.52665584,33.73543263],[16.52681514,33.73553098],[16.52700619,33.73561397],[16.52718156,33.73570159],[16.52740604,33.73576573],[16.52762413,33.73584851],[16.52778164,33.73587093],[16.52793252,33.73589152],[16.52809305,33.73590177],[16.52822443,33.73589424],[16.52839195,33.73586704],[16.52856787,33.73583748],[16.52878765,33.73580868],[16.52902576,33.73575105],[16.52924270,33.73568282],[16.52940908,33.73563184],[16.52964606,33.73556572],[16.52994076,33.73543603],[16.53017740,33.73528490],[16.53041388,33.73512782],[16.53071999,33.73487523],[16.53095425,33.73465681],[16.53109107,33.73444177],[16.53121019,33.73427018],[16.53131960,33.73412048],[16.53148744,33.73382316],[16.53170568,33.73327562],[16.53182861,33.73246792],[16.53176311,33.73158936],[16.53150675,33.73078949],[16.53116595,33.73014369]],
+  "Piovt 6":[[16.50897736,33.79065469],[16.50851148,33.79098444],[16.50813200,33.79136216],[16.50775880,33.79184202],[16.50746139,33.79249033],[16.50731356,33.79322857],[16.50734553,33.79398224],[16.50751184,33.79463678],[16.50773483,33.79505632],[16.50803374,33.79554033],[16.50849695,33.79596836],[16.50893464,33.79628625],[16.50943358,33.79647698],[16.51004434,33.79660806],[16.51057089,33.79661104],[16.51117664,33.79647481],[16.51175669,33.79622220],[16.51210571,33.79598186],[16.51248201,33.79567542],[16.51283551,33.79520348],[16.51319459,33.79450363],[16.51336504,33.79355872],[16.51331737,33.79294935],[16.51289778,33.79181575],[16.51239930,33.79127327],[16.51181622,33.79078190],[16.51110543,33.79047826],[16.51003360,33.79031512],[16.50897736,33.79065469]],
+  "piovt10":[[16.49638174,33.78089687],[16.49644420,33.78052431],[16.49649659,33.78010354],[16.49645405,33.77961169],[16.49636130,33.77914160],[16.49628816,33.77885436],[16.49617915,33.77857914],[16.49601572,33.77827182],[16.49590355,33.77808697],[16.49588290,33.77807803],[16.49575733,33.77793270],[16.49561578,33.77774782],[16.49542993,33.77759034],[16.49516757,33.77742158],[16.49496265,33.77729552],[16.49465756,33.77712198],[16.49439351,33.77702294],[16.49414253,33.77694263],[16.49385591,33.77689700],[16.49360716,33.77686748],[16.49328446,33.77687372],[16.49293174,33.77690897],[16.49259307,33.77697974],[16.49229969,33.77708102],[16.49207747,33.77719797],[16.49179064,33.77739580],[16.49146407,33.77761583],[16.49130607,33.77775499],[16.49101183,33.77808010],[16.49075563,33.77849224],[16.49059903,33.77877726],[16.49049893,33.77907939],[16.49040056,33.77936342],[16.49035896,33.77957573],[16.49034500,33.77978321],[16.49032720,33.77996173],[16.49031750,33.78017768],[16.49033251,33.78037401],[16.49033996,33.78058921],[16.49038755,33.78078200],[16.49043126,33.78097631],[16.49049364,33.78115988],[16.49054154,33.78135587],[16.49061869,33.78152302],[16.49075738,33.78174738],[16.49086821,33.78196794],[16.49108119,33.78222352],[16.49139768,33.78254078],[16.49175228,33.78282510],[16.49198672,33.78293425],[16.49220562,33.78304960],[16.49248743,33.78316422],[16.49273409,33.78320204],[16.49298199,33.78325779],[16.49327168,33.78329755],[16.49357263,33.78327276],[16.49394974,33.78323659],[16.49442585,33.78306171],[16.49479899,33.78293185],[16.49507933,33.78276158],[16.49532346,33.78256681],[16.49555471,33.78237497],[16.49575912,33.78215487],[16.49598231,33.78184541],[16.49617477,33.78146023],[16.49638174,33.78089687]]};
+
+// Pivot config — names, colors, crops, varieties
+const PIVOT_CFG = {
+  "Piovt 34": { crop:"Potato", cropAr:"البطاطس", variety:"Arizona",  color:"#c8a84b" },
+  "Piovt 12": { crop:"Alfafa", cropAr:"البرسيم",  variety:"برسيم",    color:"#4ab87a" },
+  "piovt10":  { crop:"Onion",  cropAr:"البصل",    variety:"بصل",      color:"#4a9fd4" },
+  "Piovt 22": { crop:"Potato", cropAr:"البطاطس", variety:"Hermes",   color:"#d4924a" },
+  "Piovt 6":  { crop:"Potato", cropAr:"البطاطس", variety:"Mondial",  color:"#8a70c8" },
+  "piovt 31": { crop:"Onion",  cropAr:"البصل",    variety:"بصل",      color:"#2ebfb0" }
+};
+
+// Sentinel Hub polygon boundaries [lng, lat]
+const SH_POLYGONS = {"Piovt 34":[[33.73014,16.53117],[33.72879,16.52938],[33.72862,16.52843],[33.72893,16.52695],[33.72966,16.52587],[33.7301,16.52552],[33.73101,16.52507],[33.7316,16.52491],[33.73248,16.52487],[33.73341,16.52504],[33.73451,16.52558],[33.73543,16.52666],[33.73585,16.52762],[33.73575,16.52903],[33.73488,16.53072],[33.73328,16.53171],[33.73079,16.53151],[33.73014,16.53117]],"Piovt 12":[[33.77717,16.50326],[33.77595,16.50104],[33.77593,16.50043],[33.77615,16.49977],[33.77671,16.49888],[33.77731,16.49833],[33.77787,16.49807],[33.77905,16.49784],[33.78007,16.49801],[33.78145,16.4989],[33.78218,16.50085],[33.78173,16.5024],[33.78062,16.50346],[33.7796,16.50383],[33.77717,16.50326]],"piovt10":[[33.7809,16.49638],[33.77961,16.49645],[33.77858,16.49618],[33.77742,16.49517],[33.77702,16.49439],[33.77687,16.49328],[33.77708,16.4923],[33.77762,16.49146],[33.77849,16.49076],[33.77936,16.4904],[33.78038,16.49033],[33.78197,16.49087],[33.78283,16.49175],[33.78328,16.49327],[33.78293,16.4948],[33.7809,16.49638]],"Piovt 22":[[33.78479,16.51165],[33.78349,16.51042],[33.78323,16.50907],[33.78349,16.50824],[33.78404,16.50749],[33.78491,16.50702],[33.7858,16.5069],[33.78673,16.50709],[33.78767,16.50773],[33.78825,16.50898],[33.7882,16.51],[33.78755,16.51106],[33.7865,16.51168],[33.78522,16.51172],[33.78479,16.51165]],"Piovt 6":[[33.79065,16.50898],[33.79249,16.50746],[33.79398,16.50735],[33.79554,16.50803],[33.79648,16.50944],[33.79661,16.51057],[33.79622,16.51176],[33.7952,16.51284],[33.79356,16.51337],[33.79182,16.5129],[33.79048,16.51111],[33.79032,16.51003],[33.79065,16.50898]],"piovt 31":[[33.69905,16.58233],[33.69697,16.58006],[33.69684,16.57857],[33.69752,16.57694],[33.69917,16.57573],[33.70041,16.57554],[33.7021,16.57597],[33.70305,16.57665],[33.70394,16.57862],[33.70391,16.57955],[33.70354,16.58077],[33.70146,16.58244],[33.69905,16.58233]]};
+
+// Sentinel Hub Client ID
+const SH_CLIENT_ID = "sh-08a731b4-75b9-4247-85e6-cb22e62b4356";
+
+// Compute centroids from POLYGONS
+const CENTROIDS = {};
+Object.entries(POLYGONS).forEach(([name, pts]) => {
+  CENTROIDS[name] = {
+    lat: pts.reduce((s, p) => s + p[0], 0) / pts.length,
+    lng: pts.reduce((s, p) => s + p[1], 0) / pts.length
+  };
+});
+
+// ─────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────
+function ndviStatus(v) {
+  if (v <= 0.2) return { label: "ضعيف",  hex: "#c94a3c", bg: "rgba(201,74,60,.15)"  };
+  if (v <= 0.4) return { label: "متوسط", hex: "#cc8830", bg: "rgba(204,136,48,.14)" };
+  if (v <= 0.6) return { label: "جيد",   hex: "#3aaa6a", bg: "rgba(58,170,106,.14)" };
+  return               { label: "ممتاز", hex: "#28b5a8", bg: "rgba(40,181,168,.14)" };
+}
+
+function filteredData() {
+  const f = App.filter;
+  return f === "all" ? NDVI_DATA : NDVI_DATA.filter(r => r.c === f);
+}
+
+function summarize(data) {
+  const map = {};
+  data.forEach(r => {
+    if (!map[r.p]) map[r.p] = { c: r.c, rows: [] };
+    map[r.p].rows.push(r);
+  });
+  return Object.entries(map).map(([p, d]) => {
+    d.rows.sort((a, b) => new Date(a.d) - new Date(b.d));
+    const last = d.rows[d.rows.length - 1];
+    const avg  = +(d.rows.reduce((s, r) => s + r.v, 0) / d.rows.length).toFixed(2);
+    return { p, c: d.c, v: last.v, d: last.d, avg, rows: d.rows };
+  });
+}
+
+function allDates() {
+  return [...new Set(NDVI_DATA.map(r => r.d))]
+    .sort((a, b) => new Date(a) - new Date(b));
+}
+
+function fmtDate(s) {
+  const p = s.split("/");
+  return p[1] + "/" + p[0];
+}
+
+// ─────────────────────────────────────────
+// APP STATE + MAPS
+// ─────────────────────────────────────────
+const App = {
+  filter:      "all",
+  selectedPivot: null,
+  currentView: "map",
+  curLayer:    "sat",
+  mainMap:     null,
+  satMap:      null,
+  satMode:     "true",
+  lineChart:   null,
+  leafObjs:    {},
+
+  // ── INIT ──
+  init() {
+    this.initMainMap();
+    this.initDateDisplay();
+    this.bindEvents();
+    this.render();
+  },
+
+  initDateDisplay() {
+    const n = new Date();
+    document.getElementById("top-date").textContent =
+      n.getFullYear() + "-" +
+      String(n.getMonth() + 1).padStart(2, "0") + "-" +
+      String(n.getDate()).padStart(2, "0");
+  },
+
+  // ── MAIN MAP ──
+  initMainMap() {
+    this.mainMap = L.map("main-map", { zoomControl: false, attributionControl: true });
+    L.control.zoom({ position: "bottomleft" }).addTo(this.mainMap);
+
+    this.tileLayers = {
+      sat:  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { attribution: "© Esri", maxZoom: 19 }),
+      osm:  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 19 }),
+      topo: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",  { attribution: "© OpenTopoMap", maxZoom: 17 })
+    };
+    this.tileLayers.sat.addTo(this.mainMap);
+    this.mainMap.setView([16.530, 33.748], 12);
+  },
+
+  setLayer(l) {
+    if (l === this.curLayer) return;
+    this.mainMap.removeLayer(this.tileLayers[this.curLayer]);
+    this.tileLayers[l].addTo(this.mainMap);
+    this.curLayer = l;
+    document.querySelectorAll(".lbtn").forEach(b => b.classList.remove("on"));
+    const ids = { sat: "lbtn-sat", osm: "lbtn-osm", topo: "lbtn-topo" };
+    if (ids[l]) document.getElementById(ids[l]).classList.add("on");
+  },
+
+  // ── SELECT PIVOT ──
+  selectPivot(name) {
+    this.selectedPivot = name;
+    document.getElementById("sel-badge").textContent = name;
+
+    const summary = summarize(filteredData());
+    const s = summary.find(x => x.p === name);
+    if (s) this.renderDetail(s);
+
+    this.renderPivotList();
+    this.renderPolygons();
+
+    const c = CENTROIDS[name];
+    if (c) this.mainMap.flyTo([c.lat, c.lng], 15, { duration: 1.2 });
+
+    if (this.currentView === "sat") this.showSatPivot(name);
+  },
+
+  // ── VIEW SWITCH ──
+  switchView(view) {
+    this.currentView = view;
+    const mapPane = document.getElementById("map-pane");
+    const satPane = document.getElementById("sat-pane");
+    const vtMap   = document.getElementById("vt-map");
+    const vtSat   = document.getElementById("vt-sat");
+
+    if (view === "map") {
+      mapPane.style.display = "block";
+      satPane.style.display = "none";
+      vtMap.className = "vt on"; vtSat.className = "vt off";
+      setTimeout(() => this.mainMap.invalidateSize(), 60);
+    } else {
+      mapPane.style.display = "none";
+      satPane.style.display = "flex";
+      vtSat.className = "vt on"; vtMap.className = "vt off";
+      this.initSatMap();
+      if (this.selectedPivot) this.showSatPivot(this.selectedPivot);
+    }
+  },
+
+  // ── SAT MAP ──
+  initSatMap() {
+    if (this.satMap) return;
+    this.satMap = L.map("sat-leaflet", { zoomControl: true, attributionControl: false });
+    L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      { maxZoom: 20, maxNativeZoom: 19 }
+    ).addTo(this.satMap);
+    this.satMap.setView([16.530, 33.748], 12);
+    this.satMap.on("zoomend", () => {
+      document.getElementById("sat-zoom").textContent = "Zoom: " + this.satMap.getZoom();
+    });
+  },
+
+  showSatPivot(name) {
+    if (!this.satMap) return;
+    const c = CENTROIDS[name];
+    if (!c) return;
+
+    // Remove old layers
+    if (this.satMap._pvPoly)  this.satMap.removeLayer(this.satMap._pvPoly);
+    if (this.satMap._pvLabel) this.satMap.removeLayer(this.satMap._pvLabel);
+
+    // Fly to pivot
+    this.satMap.setView([c.lat, c.lng], 16, { animate: true, duration: 1 });
+
+    const summary = summarize(filteredData());
+    const s = summary.find(x => x.p === name);
+    const st = s ? ndviStatus(s.v) : { hex: "#888", label: "—" };
+    const color = PIVOT_CFG[name] ? PIVOT_CFG[name].color : "#888";
+
+    // Draw boundary
+    const pts = POLYGONS[name];
+    if (pts) {
+      this.satMap._pvPoly = L.polygon(pts, {
+        color: st.hex, fillColor: st.hex,
+        weight: 2.5, opacity: 1, fillOpacity: 0.18
+      }).addTo(this.satMap);
+    }
+
+    // Label marker
+    const labelHTML =
+      '<div style="background:rgba(6,14,26,.94);border:1.5px solid ' + st.hex + ';' +
+      'border-radius:4px;padding:6px 10px;text-align:center;font-family:IBM Plex Sans Arabic,sans-serif;' +
+      'box-shadow:0 3px 18px rgba(0,0,0,.85);white-space:nowrap">' +
+      '<div style="font-size:10px;font-weight:700;color:' + color + '">' + name + '</div>' +
+      '<div style="font-size:15px;font-weight:700;color:' + st.hex + ';font-family:IBM Plex Mono,monospace">' +
+      (s ? s.v.toFixed(1) : "—") + '</div>' +
+      '<div style="font-size:7px;color:' + st.hex + ';letter-spacing:1px;text-transform:uppercase">' + st.label + '</div>' +
+      '</div>';
+
+    this.satMap._pvLabel = L.marker([c.lat, c.lng], {
+      icon: L.divIcon({ html: labelHTML, className: "", iconAnchor: [44, 30] })
+    }).addTo(this.satMap);
+
+    // Update header
+    document.getElementById("sat-placeholder").style.display = "none";
+    document.getElementById("sat-pivot-name").textContent = name;
+    document.getElementById("sat-pivot-name").style.color = color;
+    if (s) {
+      const badge = document.getElementById("sat-ndvi-badge");
+      badge.textContent    = "NDVI " + s.v.toFixed(2);
+      badge.style.color    = st.hex;
+      badge.style.borderColor = st.hex + "44";
+      badge.style.background  = st.hex + "18";
+    }
+    this.applySatFilter();
+  },
+
+  setSatMode(btn) {
+    this.satMode = btn.dataset.mode;
+    document.querySelectorAll(".sat-mode-btn").forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+    this.applySatFilter();
+  },
+
+  applySatFilter() {
+    if (!this.satMap) return;
+    const pane = document.querySelector("#sat-leaflet .leaflet-tile-pane");
+    if (!pane) return;
+    const filters = {
+      true:  "none",
+      ndvi:  "saturate(3) hue-rotate(80deg) contrast(1.3) brightness(1.1)",
+      infra: "hue-rotate(195deg) saturate(4) contrast(1.4)",
+      moist: "hue-rotate(235deg) saturate(3.5) contrast(1.3) brightness(.95)"
+    };
+    pane.style.filter = filters[this.satMode] || "none";
+  },
+
+  // ── RENDER POLYGONS ──
+  renderPolygons() {
+    Object.values(this.leafObjs).forEach(o => {
+      if (o.poly)  this.mainMap.removeLayer(o.poly);
+      if (o.label) this.mainMap.removeLayer(o.label);
+    });
+    this.leafObjs = {};
+
+    const summary = summarize(filteredData());
+    const sm = {};
+    summary.forEach(s => { sm[s.p] = s; });
+
+    Object.entries(POLYGONS).forEach(([name, pts]) => {
+      const s = sm[name];
+      if (!s) return;
+      const st    = ndviStatus(s.v);
+      const color = PIVOT_CFG[name] ? PIVOT_CFG[name].color : "#888";
+      const isSel = this.selectedPivot === name;
+      const c     = CENTROIDS[name];
+
+      // Polygon
+      const poly = L.polygon(pts, {
+        color:       st.hex,
+        fillColor:   st.hex,
+        weight:      isSel ? 2.5 : 1.5,
+        opacity:     isSel ? 1.0 : 0.75,
+        fillOpacity: isSel ? 0.28 : 0.1
+      }).addTo(this.mainMap);
+
+      // Label
+      const lblHTML =
+        '<div style="background:' + (isSel ? "rgba(10,25,45,.96)" : "rgba(6,14,26,.92)") +
+        ';border:' + (isSel ? "1.5px" : "1px") + ' solid ' + (isSel ? st.hex : color + "80") +
+        ';border-radius:3px;padding:5px 8px;font-family:IBM Plex Sans Arabic,sans-serif;' +
+        'text-align:center;white-space:nowrap;box-shadow:0 2px 14px rgba(0,0,0,.75);cursor:pointer;min-width:58px' +
+        (isSel ? ";border-top:2px solid " + color : "") + '">' +
+        '<div style="font-size:9px;font-weight:700;color:' + color + ';letter-spacing:.4px">' + name + '</div>' +
+        '<div style="font-size:14px;font-weight:700;color:' + st.hex + ';line-height:1.3;font-family:IBM Plex Mono,monospace">' + s.v.toFixed(1) + '</div>' +
+        '<div style="font-size:6px;color:' + st.hex + ';opacity:.9;letter-spacing:1.2px;text-transform:uppercase">' + st.label + '</div>' +
+        '</div>';
+
+      const label = L.marker([c.lat, c.lng], {
+        icon: L.divIcon({ html: lblHTML, className: "", iconAnchor: [36, 25] }),
+        zIndexOffset: isSel ? 1000 : 0
+      }).addTo(this.mainMap);
+
+      // Popup
+      const popup = L.popup({ maxWidth: 220, closeButton: true })
+        .setContent(this.buildPopup(name, s, c));
+
+      poly.bindPopup(popup);
+      label.bindPopup(popup);
+
+      const onClick = () => this.selectPivot(name);
+      poly.on("click", onClick);
+      label.on("click", onClick);
+
+      this.leafObjs[name] = { poly, label };
+    });
+  },
+
+  // ── BUILD POPUP ──
+  buildPopup(name, s, c) {
+    const st    = ndviStatus(s.v);
+    const color = PIVOT_CFG[name] ? PIVOT_CFG[name].color : "#888";
+    const cfg   = PIVOT_CFG[name] || {};
+    const last6 = s.rows.slice(-6);
+    const bars  = last6.map(r => {
+      const rs = ndviStatus(r.v);
+      return '<div class="bar-col">' +
+        '<div class="bar-fill" style="height:' + Math.round(r.v * 30 + 2) + 'px;background:' + rs.hex + '"></div>' +
+        '<div class="bar-lbl">' + r.v.toFixed(1) + '</div>' +
+        '</div>';
+    }).join("");
+
+    return '<div class="popup-wrap">' +
+      '<div class="popup-hdr">' +
+        '<span class="popup-name" style="color:' + color + '">' + name + '</span>' +
+        '<span class="popup-badge" style="color:' + st.hex + ';border-color:' + st.hex + '44;background:' + st.bg + '">' +
+          s.v.toFixed(1) + ' · ' + st.label + '</span>' +
+      '</div>' +
+      '<div class="popup-row"><span class="k">الصنف</span><span class="v" style="color:' + color + '">' + (cfg.variety || "—") + '</span></div>' +
+      '<div class="popup-row"><span class="k">المحصول</span><span class="v">' + (cfg.cropAr || s.c) + '</span></div>' +
+      '<div class="popup-row"><span class="k">متوسط NDVI</span><span class="v" style="font-family:var(--mono)">' + s.avg + '</span></div>' +
+      '<div class="popup-row"><span class="k">آخر قراءة</span><span class="v" style="font-family:var(--mono);font-size:8px">' + s.d + '</span></div>' +
+      '<div class="popup-bars">' +
+        '<div class="popup-bars-title">آخر 6 قراءات</div>' +
+        '<div class="bar-row">' + bars + '</div>' +
+      '</div>' +
+      '<div class="popup-actions">' +
+        '<a href="https://earth.google.com/web/@' + c.lat + ',' + c.lng + ',150a,700d,35y,0h,0t,0r" target="_blank" style="background:rgba(61,143,204,.1);border-color:rgba(61,143,204,.3);color:var(--c-sky2)">🌍 Google Earth</a>' +
+        '<a href="#" class="sh-sat-link" data-pivot="' + name + '"' + ' style="background:rgba(40,181,168,.08);border-color:rgba(40,181,168,.28);color:var(--c-cyan)">🛰 صورة Sentinel</a>' +
+      '</div>' +
+    '</div>';
+  },
+
+  // ── RENDER KPIs ──
+  renderKPIs() {
+    const summary = summarize(filteredData());
+    const vals = summary.map(s => s.v);
+    if (!vals.length) return;
+
+    document.getElementById("kpi-tag").textContent = summary.length + " بيفوت";
+
+    const avg  = (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2);
+    const max  = Math.max(...vals);
+    const best = summary.find(s => s.v === max);
+    const nh   = vals.filter(v => v >= 0.5).length;
+    const nc   = vals.filter(v => v <= 0.2).length;
+
+    const cards = [
+      { cls: "gold", ico: "◈", val: avg,                  lbl: "متوسط NDVI الكلي",         pct: avg * 100 },
+      { cls: "sky",  ico: "▲", val: max.toFixed(1),        lbl: (best ? best.p : "—"),       pct: max * 100 },
+      { cls: "good", ico: "✓", val: nh + "/" + summary.length, lbl: "بيفوت كثافة جيدة ≥0.5", pct: (nh / summary.length) * 100 },
+      { cls: "red",  ico: "!", val: nc,                    lbl: "تحتاج تدخلاً فورياً",      pct: (nc / summary.length) * 100 },
+    ];
+
+    const colors = { gold: "var(--c-gold)", sky: "var(--c-sky)", good: "var(--c-good)", red: "var(--c-low)" };
+
+    document.getElementById("kpi-grid").innerHTML = cards.map(k =>
+      '<div class="kpi ' + k.cls + '">' +
+        '<div class="kpi-ico">' + k.ico + '</div>' +
+        '<div class="kpi-val">' + k.val + '</div>' +
+        '<div class="kpi-lbl">' + k.lbl + '</div>' +
+        '<div class="kpi-bar"><div class="kpi-fill" style="width:' + k.pct + '%;background:' + colors[k.cls] + '"></div></div>' +
+      '</div>'
+    ).join("");
+  },
+
+  // ── RENDER PIVOT LIST ──
+  renderPivotList() {
+    const summary = summarize(filteredData());
+    document.getElementById("pivot-list").innerHTML = summary.map(s => {
+      const st    = ndviStatus(s.v);
+      const color = PIVOT_CFG[s.p] ? PIVOT_CFG[s.p].color : "#888";
+      const cfg   = PIVOT_CFG[s.p] || {};
+      const isSel = this.selectedPivot === s.p;
+      return '<div class="pivot-row' + (isSel ? " selected" : "") + '" data-pivot="' + s.p + '">' +
+        '<div>' +
+          '<div class="pr-name" style="' + (isSel ? "color:var(--c-sky2)" : "color:" + color) + '">' + s.p + '</div>' +
+          '<div class="pr-meta">' + (cfg.cropAr || s.c) + ' · ' + (cfg.variety || "") + '</div>' +
+        '</div>' +
+        '<span class="pr-badge" style="background:' + st.bg + ';color:' + st.hex + ';border:1px solid ' + st.hex + '44">' + s.v.toFixed(1) + '</span>' +
+      '</div>';
+    }).join("");
+  },
+
+  // ── RENDER DETAIL ──
+  renderDetail(s) {
+    const st    = ndviStatus(s.v);
+    const color = PIVOT_CFG[s.p] ? PIVOT_CFG[s.p].color : "#888";
+    const cfg   = PIVOT_CFG[s.p] || {};
+    const n     = s.rows.length;
+    const prev  = n >= 4 ? s.rows[n - 4].v : null;
+    const diff  = prev === null ? null : +(s.v - prev).toFixed(2);
+    const trendTxt = diff === null ? "—" : diff > 0 ? "↑ +" + diff : diff < 0 ? "↓ " + diff : "— مستقر";
+    const trendCol = diff === null ? "var(--c-t3)" : diff > 0 ? "var(--c-good)" : diff < 0 ? "var(--c-low)" : "var(--c-t3)";
+    const c = CENTROIDS[s.p] || { lat: 16.53, lng: 33.75 };
+
+    document.getElementById("detail-card").innerHTML =
+      '<div class="dc-top">' +
+        '<div class="dc-gauge" style="border-color:' + st.hex + ';color:' + st.hex + '">' +
+          '<div class="gv">' + s.v.toFixed(1) + '</div>' +
+          '<div class="gl">' + st.label + '</div>' +
+        '</div>' +
+        '<div class="dc-info">' +
+          '<div class="dc-name" style="color:' + color + '">' + s.p + '</div>' +
+          '<div class="dc-crop">' + (cfg.cropAr || s.c) + ' · <strong style="color:' + color + '">' + (cfg.variety || "") + '</strong></div>' +
+          '<div class="dc-date">' + s.d + '</div>' +
+          '<div class="dc-trend" style="color:' + trendCol + '">' + trendTxt + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="stat-grid">' +
+        '<div class="stat-box"><div class="sv" style="color:var(--c-gold)">' + s.avg + '</div><div class="sl">متوسط NDVI</div></div>' +
+        '<div class="stat-box"><div class="sv" style="color:var(--c-sky)">' + n + '</div><div class="sl">عدد القراءات</div></div>' +
+        '<div class="stat-box"><div class="sv" style="color:var(--c-good)">' + Math.max(...s.rows.map(r => r.v)).toFixed(1) + '</div><div class="sl">أعلى قيمة</div></div>' +
+        '<div class="stat-box"><div class="sv" style="color:var(--c-low)">'  + Math.min(...s.rows.map(r => r.v)).toFixed(1) + '</div><div class="sl">أدنى قيمة</div></div>' +
+      '</div>' +
+      '<canvas id="spark-chart" height="44"></canvas>' +
+      '<div class="action-row">' +
+        '<a class="action-btn ge"  href="https://earth.google.com/web/@' + c.lat + ',' + c.lng + ',150a,700d,35y,0h,0t,0r" target="_blank">🌍 Google Earth</a>' +
+        '<a class="action-btn sat sh-view-sat" href="#">🛰 صورة فضائية</a>' +
+      '</div>';
+
+    // Sparkline
+    setTimeout(() => {
+      const ctx = document.getElementById("spark-chart");
+      if (!ctx) return;
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: s.rows.map(r => fmtDate(r.d)),
+          datasets: [{
+            data: s.rows.map(r => r.v),
+            borderColor: color,
+            backgroundColor: color + "18",
+            fill: true, tension: 0.4,
+            pointRadius: 1.5,
+            borderWidth: 1.5
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { display: false },
+            y: { min: 0, max: 1, display: true,
+              ticks: { color: "#2a4060", font: { size: 7 }, stepSize: 0.5 },
+              grid:  { color: "rgba(26,48,80,.8)" }
+            }
+          }
+        }
+      });
+    }, 40);
+  },
+
+  // ── RENDER STATUS LIST ──
+  renderStatusList() {
+    const summary = summarize(filteredData()).sort((a, b) => b.v - a.v);
+    document.getElementById("status-list").innerHTML = summary.map(s => {
+      const st    = ndviStatus(s.v);
+      const color = PIVOT_CFG[s.p] ? PIVOT_CFG[s.p].color : "#888";
+      const cfg   = PIVOT_CFG[s.p] || {};
+      return '<div class="sl-row">' +
+        '<div class="sl-left">' +
+          '<div class="sl-bar" style="background:' + color + '"></div>' +
+          '<div>' +
+            '<div class="sl-name" style="color:' + color + '">' + s.p + '</div>' +
+            '<div class="sl-meta">' + (cfg.cropAr || s.c) + ' · ' + (cfg.variety || "") + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sl-right">' +
+          '<div class="sl-ndvi" style="color:' + st.hex + '">' + s.v.toFixed(1) + '</div>' +
+          '<div class="sl-status" style="color:' + st.hex + '">' + st.label + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+  },
+
+  // ── RENDER ALERTS ──
+  renderAlerts() {
+    const summary = summarize(filteredData());
+    const warn = [], good = [];
+
+    summary.forEach(s => {
+      const n = s.rows.length;
+      if (s.v <= 0.2)
+        warn.push({ i: "⚠", t: "<strong>" + s.p + "</strong> — NDVI بالغ الانخفاض (" + s.v.toFixed(1) + "). فحص ميداني فوري." });
+      if (n >= 4 && s.v < s.rows[n - 4].v - 0.15)
+        warn.push({ i: "↘", t: "<strong>" + s.p + "</strong> — انخفاض ملحوظ في NDVI خلال الأسبوعين الأخيرين." });
+      if (n >= 4 && s.v >= s.rows[n - 4].v + 0.2)
+        good.push({ i: "↗", t: "<strong>" + s.p + "</strong> — تحسن إيجابي +" + (s.v - s.rows[n - 4].v).toFixed(1) + " في NDVI." });
+      if (s.v >= 0.7)
+        good.push({ i: "★", t: "<strong>" + s.p + "</strong> — أداء ممتاز (" + s.v.toFixed(1) + "). المحصول في ذروته." });
+    });
+
+    // Alert chips on map
+    document.getElementById("alert-chips").innerHTML = warn
+      .map((a, i) => '<div class="chip" style="animation-delay:' + (i * 0.08) + 's">' + a.i + " " + a.t.replace(/<[^>]*>/g, "") + "</div>")
+      .join("");
+
+    let html = "";
+    if (warn.length)
+      html += '<div class="alert-panel">' +
+        '<div class="alert-title" style="color:var(--c-low)">تنبيهات عاجلة · ' + warn.length + '</div>' +
+        warn.map(a => '<div class="alert-item"><div class="alert-icon" style="color:var(--c-low)">' + a.i + '</div><div class="alert-text" style="color:#d08070">' + a.t + '</div></div>').join("") +
+        '</div>';
+    if (good.length)
+      html += '<div class="alert-panel positive">' +
+        '<div class="alert-title" style="color:var(--c-good)">مؤشرات إيجابية · ' + good.length + '</div>' +
+        good.map(a => '<div class="alert-item"><div class="alert-icon" style="color:var(--c-good)">' + a.i + '</div><div class="alert-text" style="color:#70c090">' + a.t + '</div></div>').join("") +
+        '</div>';
+    if (!html)
+      html = '<div class="alert-panel positive" style="margin-top:4px">' +
+        '<div class="alert-title" style="color:var(--c-good)">لا توجد تنبيهات نشطة</div>' +
+        '<div style="font-size:8px;color:var(--c-t4)">جميع البيفوت ضمن المعدلات الطبيعية.</div>' +
+        '</div>';
+
+    document.getElementById("alerts-box").innerHTML = html;
+  },
+
+  // ── RENDER LINE CHART ──
+  renderLineChart() {
+    const data    = filteredData();
+    const pivots  = [...new Set(data.map(r => r.p))];
+    const dates   = allDates();
+    const datasets = pivots.map(p => {
+      const color = PIVOT_CFG[p] ? PIVOT_CFG[p].color : "#888";
+      const rows  = data.filter(r => r.p === p);
+      return {
+        label: p,
+        data:  dates.map(d => { const r = rows.find(x => x.d === d); return r ? r.v : null; }),
+        borderColor:     color,
+        backgroundColor: "transparent",
+        tension: 0.4, fill: false,
+        pointRadius: 1.5, borderWidth: 1.5,
+        spanGaps: true
+      };
+    });
+
+    if (this.lineChart) this.lineChart.destroy();
+    this.lineChart = new Chart(document.getElementById("line-chart"), {
+      type: "line",
+      data: { labels: dates.map(fmtDate), datasets },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            labels: { color: "#3d6080", font: { family: "IBM Plex Sans Arabic", size: 8 }, boxWidth: 8, padding: 8, boxHeight: 2 }
+          },
+          tooltip: {
+            backgroundColor: "#0b1a2e",
+            titleColor: "#dce8f5", bodyColor: "#7a9abe",
+            borderColor: "#1a3050", borderWidth: 1
+          }
+        },
+        scales: {
+          x: { ticks: { color: "#1e3a58", font: { size: 7 }, maxTicksLimit: 8 }, grid: { color: "rgba(26,48,80,.5)" } },
+          y: { min: 0, max: 1,
+            ticks: { color: "#1e3a58", font: { size: 7 }, stepSize: 0.2 },
+            grid:  { color: "rgba(26,48,80,.5)" }
+          }
+        }
+      }
+    });
+
+    const labels = { all: "جميع البيفوت", Potato: "البطاطس", Onion: "البصل", Alfafa: "البرسيم" };
+    document.getElementById("chart-label").textContent = labels[this.filter] || this.filter;
+  },
+
+  // ── RENDER HEALTH ──
+  renderHealth() {
+    const all = NDVI_DATA;
+    if (!all.length) return;
+
+    const today   = new Date();
+    const allDts  = all.map(r => new Date(r.d)).filter(d => !isNaN(d));
+    const lastDt  = new Date(Math.max(...allDts));
+    const daysDiff = Math.floor((today - lastDt) / 86400000);
+
+    let col, lbl, pct;
+    if      (daysDiff <=  7) { col = "var(--c-good)"; lbl = daysDiff + " يوم — محدّث";   pct = 100; }
+    else if (daysDiff <= 15) { col = "var(--c-gold)"; lbl = daysDiff + " يوم — مقبول";   pct = 70;  }
+    else if (daysDiff <= 30) { col = "var(--c-med)";  lbl = daysDiff + " يوم — قديم";    pct = 40;  }
+    else                     { col = "var(--c-low)";  lbl = daysDiff + " يوم — منتهٍ";   pct = 15;  }
+
+    const MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+    const cutoff = new Date(today - 15 * 86400000);
+    const covered = Object.keys(PIVOT_CFG).filter(p => all.some(r => r.p === p && new Date(r.d) >= cutoff)).length;
+    const covCol  = covered >= 5 ? "var(--c-good)" : covered >= 3 ? "var(--c-gold)" : "var(--c-low)";
+
+    const set = (id, val, color) => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = val; if (color) el.style.color = color; }
+    };
+    const setDot = (id, color) => { const el = document.getElementById(id); if (el) el.style.background = color; };
+
+    set("hv-1", lastDt.getDate() + " " + MONTHS[lastDt.getMonth()] + " " + lastDt.getFullYear(), col);
+    set("hv-2", lbl, col);
+    set("hv-3", all.length + " قراءة");
+    set("hv-4", covered + "/" + Object.keys(PIVOT_CFG).length + " بيفوت", covCol);
+    set("h-pct", pct + "%");
+    setDot("hd-1", col); setDot("hd-2", col);
+    setDot("hd-3", "var(--c-sky)"); setDot("hd-4", covCol);
+
+    const bar = document.getElementById("h-bar");
+    if (bar) { bar.style.width = pct + "%"; bar.style.background = col; }
+
+    const dot = document.getElementById("live-dot");
+    if (dot) dot.style.background = col;
+  },
+
+  // ── BIND EVENTS ──
+  bindEvents() {
+    // Crop filter pills
+    document.querySelectorAll(".pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".pill").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        this.filter = btn.dataset.f;
+        this.selectedPivot = null;
+        document.getElementById("sel-badge").textContent = "— محدد";
+        document.getElementById("detail-card").innerHTML = '<div class="dc-empty">اختر بيفوتاً من الخريطة<br>أو من القائمة</div>';
+        this.render();
+      });
+    });
+
+    // Pivot list click delegation
+    document.getElementById("pivot-list").addEventListener("click", (e) => {
+      const row = e.target.closest("[data-pivot]");
+      if (row) this.selectPivot(row.dataset.pivot);
+    });
+
+    // Popup satellite links
+    document.addEventListener("click", (e) => {
+      const satLink = e.target.closest(".sh-sat-link");
+      if (satLink) {
+        e.preventDefault();
+        this.selectPivot(satLink.dataset.pivot);
+        this.switchView("sat");
+      }
+      const viewSat = e.target.closest(".sh-view-sat");
+      if (viewSat) {
+        e.preventDefault();
+        this.switchView("sat");
+      }
+    });
+
+    // Google Earth
+    document.getElementById("btn-ge").addEventListener("click", () => {
+      window.open("https://earth.google.com/web/@16.530,33.748,400a,14000d,35y,0h,0t,0r", "_blank");
+    });
+
+    // Sentinel Hub modal open
+    document.getElementById("btn-sh").addEventListener("click", () => {
+      document.getElementById("sh-modal").classList.add("open");
+    });
+
+    // Modal close
+    document.getElementById("sh-close").addEventListener("click", () => {
+      document.getElementById("sh-modal").classList.remove("open");
+    });
+    document.getElementById("sh-cancel-btn").addEventListener("click", () => {
+      document.getElementById("sh-modal").classList.remove("open");
+    });
+    document.getElementById("sh-modal").addEventListener("click", function(e) {
+      if (e.target === this) this.classList.remove("open");
+    });
+
+    // Sentinel Hub run
+    document.getElementById("sh-run-btn").addEventListener("click", () => {
+      SentinelHub.run();
+    });
+
+    // Set default date range (last 30 days)
+    const today = new Date();
+    const past  = new Date(today);
+    past.setDate(past.getDate() - 30);
+    document.getElementById("sh-date-to").value   = today.toISOString().slice(0, 10);
+    document.getElementById("sh-date-from").value = past.toISOString().slice(0, 10);
+  },
+
+  // ── MAIN RENDER ──
+  render() {
+    this.renderKPIs();
+    this.renderPolygons();
+    this.renderPivotList();
+    this.renderLineChart();
+    this.renderStatusList();
+    this.renderAlerts();
+    this.renderHealth();
+  }
+};
+
+// ─────────────────────────────────────────
+// SENTINEL HUB INTEGRATION
+// Clean, isolated module
+// ─────────────────────────────────────────
+const SentinelHub = {
+
+  token:    null,
+  tokenExp: 0,
+
+  EVALSCRIPT: `//VERSION=3
+function setup() {
+  return {
+    input:  [{ bands: ["B04", "B08", "dataMask"] }],
+    output: [
+      { id: "ndvi",     bands: 1, sampleType: "FLOAT32" },
+      { id: "dataMask", bands: 1, sampleType: "UINT8"   }
+    ]
+  };
+}
+function evaluatePixel(s) {
+  const ndvi = (s.B08 - s.B04) / (s.B08 + s.B04);
+  return { ndvi: [ndvi], dataMask: [s.dataMask] };
+}`,
+
+  log(msg, color) {
+    const el = document.getElementById("sh-log");
+    el.style.display = "block";
+    const t = new Date().toLocaleTimeString("en", { hour12: false });
+    const line = document.createElement("div");
+    line.style.color = color || "#7a9abe";
+    line.textContent = "[" + t + "] " + msg;
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  },
+
+  clearLog() {
+    const el = document.getElementById("sh-log");
+    el.innerHTML = "";
+    el.style.display = "none";
+  },
+
+  async getToken(clientId, clientSecret) {
+    if (this.token && Date.now() < this.tokenExp) return this.token;
+
+    const resp = await fetch(
+      "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type:    "client_credentials",
+          client_id:     clientId,
+          client_secret: clientSecret
+        })
+      }
+    );
+
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error("Token HTTP " + resp.status + ": " + txt.slice(0, 120));
+    }
+
+    const data = await resp.json();
+    if (!data.access_token) throw new Error("لم يُرجع الخادم access_token");
+
+    this.token    = data.access_token;
+    this.tokenExp = Date.now() + ((data.expires_in || 300) - 30) * 1000;
+    return this.token;
+  },
+
+  async fetchPivotStats(name, dateFrom, dateTo, token) {
+    const poly = SH_POLYGONS[name];
+    if (!poly) throw new Error("لا توجد إحداثيات للبيفوت: " + name);
+
+    const body = {
+      input: {
+        bounds: {
+          geometry: { type: "Polygon", coordinates: [poly] },
+          properties: { crs: "http://www.opengis.net/def/crs/OGC/1.3/CRS84" }
+        },
+        data: [{
+          type: "sentinel-2-l2a",
+          dataFilter: { maxCloudCoverage: 20 }
+        }]
+      },
+      aggregation: {
+        timeRange: {
+          from: dateFrom + "T00:00:00Z",
+          to:   dateTo   + "T23:59:59Z"
+        },
+        aggregationInterval: { of: "P5D" },
+        evalscript: this.EVALSCRIPT,
+        resx: 10,
+        resy: 10
+      },
+      calculations: {
+        ndvi: { statistics: {} }
+      }
+    };
+
+    const resp = await fetch(
+      "https://sh.dataspace.copernicus.eu/api/v1/statistics",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":  "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify(body)
+      }
+    );
+
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error("Stats API HTTP " + resp.status + ": " + txt.slice(0, 150));
+    }
+
+    return await resp.json();
+  },
+
+  parseStats(name, result) {
+    const cfg   = PIVOT_CFG[name] || {};
+    const items = (result && result.data) ? result.data : [];
+    const records = [];
+
+    items.forEach(item => {
+      const dateStr = item.interval && item.interval.from ? item.interval.from.slice(0, 10) : null;
+      const stats   = item.outputs && item.outputs.ndvi && item.outputs.ndvi.bands &&
+                      item.outputs.ndvi.bands.B0 ? item.outputs.ndvi.bands.B0.stats : null;
+      const mean    = stats ? stats.mean : null;
+
+      if (!dateStr || mean === null || mean < -0.9 || mean > 1.0) return;
+
+      const dt  = new Date(dateStr);
+      const fmt = (dt.getUTCMonth() + 1) + "/" + dt.getUTCDate() + "/" + dt.getUTCFullYear();
+
+      // Skip if already exists
+      const exists = NDVI_DATA.some(r => r.p === name && r.d === fmt);
+      if (!exists) {
+        records.push({
+          d: fmt,
+          c: cfg.crop || "Potato",
+          p: name,
+          v: Math.round(mean * 100) / 100
+        });
+      }
+    });
+
+    return records;
+  },
+
+  async run() {
+    const clientId     = document.getElementById("sh-client-id").value.trim();
+    const clientSecret = document.getElementById("sh-client-secret").value.trim();
+    const dateFrom     = document.getElementById("sh-date-from").value;
+    const dateTo       = document.getElementById("sh-date-to").value;
+    const runBtn       = document.getElementById("sh-run-btn");
+
+    this.clearLog();
+
+    // Validate
+    if (!clientId)     { this.log("⚠ Client ID مفقود", "#cc8830");  return; }
+    if (!clientSecret) { this.log("⚠ أدخل Client Secret", "#cc8830"); return; }
+    if (!dateFrom || !dateTo) { this.log("⚠ حدد نطاق التاريخ", "#cc8830"); return; }
+
+    runBtn.disabled    = true;
+    runBtn.textContent = "⏳ جاري الجلب...";
+
+    this.log("══ بدء جلب NDVI من Sentinel Hub ══", "#28b5a8");
+    this.log("Client ID : " + clientId.slice(0, 8) + "...", "#3d6080");
+    this.log("الفترة    : " + dateFrom + " → " + dateTo, "#3d6080");
+
+    try {
+      // Step 1: Authenticate
+      this.log("① مصادقة مع Copernicus Data Space...", "#7a9abe");
+      const token = await this.getToken(clientId, clientSecret);
+      this.log("✓ Token صالح — المصادقة ناجحة", "#3aaa6a");
+
+      // Step 2: Fetch each pivot
+      const pivotNames = Object.keys(SH_POLYGONS);
+      let totalAdded = 0;
+
+      this.log("② جلب إحصائيات NDVI لـ " + pivotNames.length + " بيفوت...", "#7a9abe");
+
+      for (let i = 0; i < pivotNames.length; i++) {
+        const name = pivotNames[i];
+        this.log("  [" + (i + 1) + "/" + pivotNames.length + "] " + name + "...");
+
+        try {
+          const result  = await this.fetchPivotStats(name, dateFrom, dateTo, token);
+          const records = this.parseStats(name, result);
+
+          records.forEach(r => NDVI_DATA.push(r));
+          totalAdded += records.length;
+
+          if (records.length > 0) {
+            const lastVal = records[records.length - 1].v;
+            this.log("      ✓ " + records.length + " قراءة جديدة — آخر NDVI: " + lastVal.toFixed(2), "#3aaa6a");
+          } else if (result && result.data && result.data.length > 0) {
+            this.log("      ℹ البيانات موجودة — لا قراءات جديدة في هذه الفترة", "#3d6080");
+          } else {
+            this.log("      ⚠ لا توجد بيانات — ربما الغيوم أو الفترة قصيرة", "#cc8830");
+          }
+
+        } catch (e) {
+          this.log("      ✗ " + name + ": " + e.message, "#c94a3c");
+        }
+
+        // Small delay between requests to respect rate limits
+        if (i < pivotNames.length - 1) {
+          await new Promise(r => setTimeout(r, 500));
+        }
+      }
+
+      // Step 3: Sort and update dashboard
+      NDVI_DATA.sort((a, b) => new Date(a.d) - new Date(b.d));
+      App.render();
+
+      this.log("══════════════════════════════════", "#3d6080");
+      if (totalAdded > 0) {
+        this.log("✅ اكتمل — تمت إضافة " + totalAdded + " قراءة جديدة", "#28b5a8");
+        document.getElementById("live-lbl").textContent     = "Sentinel ✓";
+        document.getElementById("btn-sh-lbl").textContent   = "✓ محدّث";
+        document.getElementById("btn-sh").style.color       = "var(--c-good)";
+        document.getElementById("btn-sh").style.borderColor = "rgba(58,170,106,.5)";
+        document.getElementById("live-dot").style.background = "var(--c-good)";
+      } else {
+        this.log("ℹ لا توجد قراءات جديدة — جرب توسيع نطاق التاريخ", "#7a9abe");
+      }
+
+    } catch (e) {
+      this.log("══════════════════════════════════", "#3d6080");
+      this.log("✗ خطأ: " + e.message, "#c94a3c");
+      this.log("تحقق من Client Secret أو تأكد أن الحساب نشط على:", "#cc8830");
+      this.log("https://dataspace.copernicus.eu", "#5aaee8");
+    }
+
+    runBtn.disabled    = false;
+    runBtn.textContent = "🛰 جلب NDVI الحقيقي";
+  }
+};
+
+// ─────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", function() {
+  App.init();
+});
+</script>
+</body>
+</html>
