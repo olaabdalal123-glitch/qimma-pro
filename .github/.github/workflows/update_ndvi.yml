@@ -1,0 +1,174 @@
+"""
+مشروع القمة الزراعي — جلب NDVI من Copernicus
+يُشغَّل بواسطة GitHub Actions كل 5 أيام
+"""name: تحديث NDVI تلقائياً
+
+on:
+  schedule:
+    - cron: '0 6 */5 * *'
+  workflow_dispatch:
+
+jobs:
+  update-ndvi:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: تحميل الكود
+        uses: actions/checkout@v4
+
+      - name: إعداد Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: تثبيت المكتبات
+        run: pip install requests
+
+      - name: جلب NDVI من Copernicus
+        env:
+          SH_CLIENT_ID:     ${{ secrets.SH_CLIENT_ID }}
+          SH_CLIENT_SECRET: ${{ secrets.SH_CLIENT_SECRET }}
+        run: python fetch_ndvi.py
+
+      - name: رفع البيانات
+        run: |
+          git config user.name  "NDVI-Bot"
+          git config user.email "bot@qimma"
+          git add ndvi_data.json
+          git diff --staged --quiet || git commit -m "تحديث NDVI تلقائي - $(date '+%Y-%m-%d')"
+          git push
+
+
+import json, os, sys, urllib.request, urllib.parse, urllib.error
+from datetime import datetime, timedelta
+
+CLIENT_ID     = os.environ.get("SH_CLIENT_ID", "")
+CLIENT_SECRET = os.environ.get("SH_CLIENT_SECRET", "")
+
+if not CLIENT_ID or not CLIENT_SECRET:
+    print("❌ SH_CLIENT_ID أو SH_CLIENT_SECRET غير موجودة")
+    sys.exit(1)
+
+PIVOTS = {
+    "Piovt 34": {"crop":"Potato", "poly":[[33.73014,16.53117],[33.72879,16.52938],[33.72862,16.52843],[33.72893,16.52695],[33.72966,16.52587],[33.73010,16.52552],[33.73101,16.52507],[33.73160,16.52491],[33.73248,16.52487],[33.73341,16.52504],[33.73451,16.52558],[33.73543,16.52666],[33.73585,16.52762],[33.73575,16.52903],[33.73488,16.53072],[33.73328,16.53171],[33.73079,16.53151],[33.73014,16.53117]]},
+    "Piovt 12": {"crop":"Alfafa","poly":[[33.77717,16.50326],[33.77595,16.50104],[33.77593,16.50043],[33.77615,16.49977],[33.77671,16.49888],[33.77731,16.49833],[33.77787,16.49807],[33.77905,16.49784],[33.78007,16.49801],[33.78145,16.49890],[33.78218,16.50085],[33.78173,16.50240],[33.78062,16.50346],[33.77960,16.50383],[33.77717,16.50326]]},
+    "piovt10":  {"crop":"Onion", "poly":[[33.78090,16.49638],[33.77961,16.49645],[33.77858,16.49618],[33.77742,16.49517],[33.77702,16.49439],[33.77687,16.49328],[33.77708,16.49230],[33.77762,16.49146],[33.77849,16.49076],[33.77936,16.49040],[33.78038,16.49033],[33.78197,16.49087],[33.78283,16.49175],[33.78328,16.49327],[33.78293,16.49480],[33.78090,16.49638]]},
+    "Piovt 22": {"crop":"Potato","poly":[[33.78479,16.51165],[33.78349,16.51042],[33.78323,16.50907],[33.78349,16.50824],[33.78404,16.50749],[33.78491,16.50702],[33.78580,16.50690],[33.78673,16.50709],[33.78767,16.50773],[33.78825,16.50898],[33.78820,16.51000],[33.78755,16.51106],[33.78650,16.51168],[33.78522,16.51172],[33.78479,16.51165]]},
+    "Piovt 6":  {"crop":"Potato","poly":[[33.79065,16.50898],[33.79249,16.50746],[33.79398,16.50735],[33.79554,16.50803],[33.79648,16.50944],[33.79661,16.51057],[33.79622,16.51176],[33.79520,16.51284],[33.79356,16.51337],[33.79182,16.51290],[33.79048,16.51111],[33.79032,16.51003],[33.79065,16.50898]]},
+    "piovt 31": {"crop":"Onion", "poly":[[33.69905,16.58233],[33.69697,16.58006],[33.69684,16.57857],[33.69752,16.57694],[33.69917,16.57573],[33.70041,16.57554],[33.70210,16.57597],[33.70305,16.57665],[33.70394,16.57862],[33.70391,16.57955],[33.70354,16.58077],[33.70146,16.58244],[33.69905,16.58233]]},
+}
+
+EVALSCRIPT = """//VERSION=3
+function setup(){return{input:[{bands:["B04","B08","dataMask"]}],output:[{id:"ndvi",bands:1,sampleType:"FLOAT32"},{id:"dataMask",bands:1,sampleType:"UINT8"}]}}
+function evaluatePixel(s){return{ndvi:[(s.B08-s.B04)/(s.B08+s.B04)],dataMask:[s.dataMask]}}"""
+
+
+def get_token():
+    data = urllib.parse.urlencode({
+        "grant_type":    "client_credentials",
+        "client_id":     CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+    }).encode()
+    req = urllib.request.Request(
+        "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token",
+        data=data,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.loads(r.read())["access_token"]
+
+
+def fetch_pivot(name, data, date_from, date_to, token):
+    body = json.dumps({
+        "input": {
+            "bounds": {
+                "geometry": {"type": "Polygon", "coordinates": [data["poly"]]},
+                "properties": {"crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"}
+            },
+            "data": [{"type": "sentinel-2-l2a", "dataFilter": {"maxCloudCoverage": 20}}]
+        },
+        "aggregation": {
+            "timeRange": {"from": f"{date_from}T00:00:00Z", "to": f"{date_to}T23:59:59Z"},
+            "aggregationInterval": {"of": "P5D"},
+            "evalscript": EVALSCRIPT,
+            "resx": 10, "resy": 10
+        },
+        "calculations": {"ndvi": {"statistics": {}}}
+    }).encode()
+
+    req = urllib.request.Request(
+        "https://sh.dataspace.copernicus.eu/api/v1/statistics",
+        data=body,
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
+        method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        print(f"  ✗ HTTP {e.code}: {e.read().decode()[:150]}")
+        return None
+
+
+def main():
+    date_to   = datetime.now()
+    date_from = date_to - timedelta(days=10)
+    df = date_from.strftime("%Y-%m-%d")
+    dt = date_to.strftime("%Y-%m-%d")
+
+    print(f"جلب NDVI: {df} → {dt}")
+
+    # قراءة البيانات الموجودة
+    existing = []
+    if os.path.exists("ndvi_data.json"):
+        with open("ndvi_data.json", encoding="utf-8") as f:
+            existing = json.load(f).get("records", [])
+    print(f"بيانات موجودة: {len(existing)} قراءة")
+
+    existing_keys = {f"{r['p']}|{r['d']}" for r in existing}
+
+    # المصادقة
+    print("مصادقة مع Copernicus...")
+    token = get_token()
+    print("✓ تمت المصادقة")
+
+    # جلب كل بيفوت
+    new_records = []
+    for name, data in PIVOTS.items():
+        print(f"→ {name}...")
+        result = fetch_pivot(name, data, df, dt, token)
+        if not result:
+            continue
+        for item in result.get("data", []):
+            ds = (item.get("interval") or {}).get("from", "")[:10]
+            stats = ((item.get("outputs") or {}).get("ndvi") or {}).get("bands", {}).get("B0", {}).get("stats", {})
+            mean = stats.get("mean")
+            if ds and mean is not None and -0.9 < mean <= 1.0:
+                d = datetime.strptime(ds, "%Y-%m-%d")
+                fmt = f"{d.month}/{d.day}/{d.year}"
+                if f"{name}|{fmt}" not in existing_keys:
+                    new_records.append({"d": fmt, "c": data["crop"], "p": name, "v": round(mean, 2)})
+                    print(f"  ✓ {fmt}: {round(mean,2)}")
+
+    # حفظ
+    all_records = existing + new_records
+    all_records.sort(key=lambda r: (r["p"], r["d"]))
+
+    output = {
+        "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M UTC"),
+        "total_records": len(all_records),
+        "new_records": len(new_records),
+        "records": all_records
+    }
+
+    with open("ndvi_data.json", "w", encoding="utf-8") as f:
+        json.dump(output, f, ensure_ascii=False, indent=2)
+
+    print(f"✅ تم — {len(new_records)} قراءة جديدة، إجمالي: {len(all_records)}")
+
+
+if __name__ == "__main__":
+    main()
